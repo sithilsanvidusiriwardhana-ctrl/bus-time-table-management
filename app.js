@@ -49,12 +49,11 @@ const defaultState = {
 let state = loadState();
 let editingScheduleId = null;
 
-function isValidUser(user) {
+function isValidUser(user, users = defaultState.users) {
   if (!user || typeof user !== 'object') {
     return false;
   }
 
-  const users = state?.users || defaultState.users;
   const storedUsername = String(user.username || user.name || '').toLowerCase();
 
   return users.some((savedUser) => {
@@ -65,7 +64,7 @@ function isValidUser(user) {
 function loadState() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (!stored) {
-    return defaultState;
+    return { ...defaultState };
   }
 
   try {
@@ -79,14 +78,14 @@ function loadState() {
       normalizedState.users = defaultState.users;
     }
 
-    if (!isValidUser(normalizedState.currentUser)) {
+    if (!isValidUser(normalizedState.currentUser, normalizedState.users)) {
       normalizedState.currentUser = null;
     }
 
     return normalizedState;
   } catch (error) {
     console.error('Unable to load saved state.', error);
-    return defaultState;
+    return { ...defaultState };
   }
 }
 
@@ -224,19 +223,27 @@ function getUserDisplayName(user) {
 }
 
 function renderDashboard() {
-  const loginSection = document.getElementById('loginSection');
+  const loginSection = document.getElementById('loginSection') || document.querySelector('.login-card');
   const dashboardSection = document.getElementById('dashboardSection');
   const dashboardTitle = document.getElementById('dashboardTitle');
   const userRoleBadge = document.getElementById('userRoleBadge');
   const welcomeCard = document.getElementById('welcomeCard');
 
+  if (!dashboardSection) {
+    return;
+  }
+
   if (!state.currentUser) {
-    loginSection.classList.remove('hidden');
+    if (loginSection) {
+      loginSection.classList.remove('hidden');
+    }
     dashboardSection.classList.add('hidden');
     return;
   }
 
-  loginSection.classList.add('hidden');
+  if (loginSection) {
+    loginSection.classList.add('hidden');
+  }
   dashboardSection.classList.remove('hidden');
   dashboardTitle.textContent = `${state.currentUser.role} dashboard`;
   userRoleBadge.textContent = state.currentUser.role;
@@ -373,21 +380,41 @@ function renderPassengerPanel() {
   passengerTrips.innerHTML = groupedTrips
     .map(
       ({ routeKey, items }) => `
-        <section class="route-group-card">
-          <h4 class="route-group-title">Route ${routeKey}</h4>
-          ${items
-            .map(
-              (trip) => `
-                <article class="trip-card">
-                  <h4>${trip.route}</h4>
-                  <span class="route-chip">Route ${getRouteNumber(trip)}</span>
-                  <p class="trip-meta">Bus ${trip.busNumber} • Driver ${trip.driverName}</p>
-                  <p class="trip-meta">Departure ${trip.departureTime} • Arrival ${trip.arrivalTime}</p>
-                  <span class="status-pill ${getStatusClass(trip.status)}">${trip.status}</span>
-                </article>
-              `
-            )
-            .join('')}
+        <section class="route-group-card passenger-route-card">
+          <div class="route-group-header">
+            <h4 class="route-group-title">Route ${routeKey}</h4>
+            <p class="route-summary">${items[0]?.route || 'Scheduled trips'}</p>
+          </div>
+          <div class="table-wrap">
+            <table class="passenger-timetable">
+              <thead>
+                <tr>
+                  <th>Route</th>
+                  <th>Bus</th>
+                  <th>Driver</th>
+                  <th>Departure</th>
+                  <th>Arrival</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items
+                  .map(
+                    (trip) => `
+                      <tr>
+                        <td>${getRouteLabel(trip)}</td>
+                        <td>${trip.busNumber}</td>
+                        <td>${trip.driverName}</td>
+                        <td>${trip.departureTime}</td>
+                        <td>${trip.arrivalTime}</td>
+                        <td><span class="status-pill ${getStatusClass(trip.status)}">${trip.status}</span></td>
+                      </tr>
+                    `
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
         </section>
       `
     )
@@ -444,19 +471,26 @@ function handleLogin(event) {
     setLoginError('Please enter both username and password.');
     return;
   }
+
   const verifiedUser = verifyUser(username, password);
   if (!verifiedUser) {
     setLoginError('Invalid username or password.');
     return;
   }
 
-  // generate OTP and redirect to separate OTP page
+  if (verifiedUser.role === 'Passenger') {
+    state.currentUser = { ...verifiedUser, name: verifiedUser.displayName };
+    clearLoginError();
+    saveState();
+    render();
+    return;
+  }
+
   const otp = otpUtils.generateOtp(6);
   const pendingUser = { ...verifiedUser, name: verifiedUser.displayName };
   sessionStorage.setItem('pendingOtp', otp);
   sessionStorage.setItem('pendingUser', JSON.stringify(pendingUser));
   sessionStorage.setItem('pendingAction', 'login');
-  // navigate to OTP page
   window.location.href = 'otp.html';
 }
 

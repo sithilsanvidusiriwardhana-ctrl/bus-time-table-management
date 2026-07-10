@@ -85,11 +85,14 @@
           }
 
           saveState(state);
-          // clear pending and redirect back
+          // clear pending and return to the main page
           sessionStorage.removeItem('pendingOtp');
           sessionStorage.removeItem('pendingUser');
           sessionStorage.removeItem('pendingAction');
-          window.location.href = 'index.html';
+          showStatus('Verification successful. Returning to the main page.', false);
+          setTimeout(() => {
+            window.location.replace('index.html');
+          }, 400);
         });
 
         document.getElementById('resendBtn').addEventListener('click', () => {

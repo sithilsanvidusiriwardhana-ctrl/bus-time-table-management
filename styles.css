@@ -376,8 +376,18 @@ select {
 }
 
 .route-group-title {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.2rem;
   color: var(--primary-dark);
+}
+
+.route-group-header {
+  margin-bottom: 0.8rem;
+}
+
+.route-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 table {
@@ -472,6 +482,15 @@ th {
 .trip-meta {
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.passenger-timetable th,
+.passenger-timetable td {
+  white-space: nowrap;
+}
+
+.passenger-route-card {
+  overflow: hidden;
 }
 
 @media (max-width: 640px) {
