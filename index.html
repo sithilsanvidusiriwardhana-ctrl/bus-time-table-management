@@ -7,17 +7,68 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="hero">
-      <div class="container">
-        <p class="eyebrow">Smart transport management</p>
-        <h1>Bus Time Table Management</h1>
-        <p class="hero-copy">
-          Separate dashboards for admins, drivers, and passengers with secure sign-in.
-        </p>
-        <div class="hero-actions">
-          <a href="#loginSection" class="btn btn-primary">Open dashboard</a>
-          <a href="#features" class="btn btn-secondary">See features</a>
+    <header class="hero two-column-hero">
+      <div class="container hero-grid">
+        <div class="hero-left">
+          <div class="hero-brand">
+            <h1 class="hero-title">Explore the things <span class="accent">you love.</span></h1>
+            <p class="hero-copy">Search routes, manage schedules, and sign in securely.</p>
+          </div>
+
+          <div class="hero-art">
+            <div class="art-card art-large"></div>
+            <div class="art-card art-small"></div>
+          </div>
         </div>
+
+        <aside class="hero-right">
+          <div class="login-card card">
+            <h2 class="login-heading">Log in</h2>
+            <form id="loginForm">
+              <label for="username">Username</label>
+              <input id="username" name="username" type="text" placeholder="Username" required />
+
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" placeholder="Password" required />
+
+              <button class="btn btn-primary btn-full" type="submit">Log in</button>
+            </form>
+
+            <div class="auth-actions">
+              <a href="#" class="forgot">Forgotten password?</a>
+              <button id="createAccountBtn" class="btn btn-outline btn-full" type="button">Create new account</button>
+            </div>
+
+            <!-- OTP UI moved to otp.html -->
+
+            <div id="registerPanel" class="register-panel hidden">
+              <h3>Create account</h3>
+              <form id="registerForm">
+                <label for="displayName">Full name</label>
+                <input id="displayName" name="displayName" type="text" placeholder="Enter full name" required />
+
+                <label for="newUsername">Username</label>
+                <input id="newUsername" name="newUsername" type="text" placeholder="Choose username" required />
+
+                <label for="newPassword">Password</label>
+                <input id="newPassword" name="newPassword" type="password" placeholder="Choose password" required />
+
+                <label for="newRole">Role</label>
+                <select id="newRole" name="newRole">
+                  <option value="Admin">Admin</option>
+                  <option value="Driver">Driver</option>
+                  <option value="Passenger">Passenger</option>
+                </select>
+
+                <button class="btn btn-secondary btn-full" type="submit">Register</button>
+              </form>
+              <p id="registerMessage" class="form-success" role="status"></p>
+            </div>
+
+            <p class="meta">© Bus Time Table</p>
+            <p id="loginError" class="form-error" role="alert"></p>
+          </div>
+        </aside>
       </div>
     </header>
 
@@ -37,55 +88,7 @@
         </article>
       </section>
 
-      <section id="loginSection" class="card login-card">
-        <div class="auth-grid">
-          <div>
-            <h2>Secure sign in</h2>
-            <form id="loginForm">
-              <label for="username">Username</label>
-              <input id="username" name="username" type="text" placeholder="Enter username" required />
-
-              <label for="password">Password</label>
-              <input id="password" name="password" type="password" placeholder="Enter password" required />
-
-              <label for="role">Role</label>
-              <select id="role" name="role">
-                <option value="Admin">Admin</option>
-                <option value="Driver">Driver</option>
-                <option value="Passenger">Passenger</option>
-              </select>
-
-              <button class="btn btn-primary" type="submit">Enter dashboard</button>
-            </form>
-            <p id="loginError" class="form-error" role="alert"></p>
-            <p class="hint">Demo credentials: admin / admin123, driver / driver123, passenger / passenger123.</p>
-          </div>
-
-          <div class="register-panel">
-            <h3>Create account</h3>
-            <form id="registerForm">
-              <label for="displayName">Full name</label>
-              <input id="displayName" name="displayName" type="text" placeholder="Enter full name" required />
-
-              <label for="newUsername">Username</label>
-              <input id="newUsername" name="newUsername" type="text" placeholder="Choose username" required />
-
-              <label for="newPassword">Password</label>
-              <input id="newPassword" name="newPassword" type="password" placeholder="Choose password" required />
-
-              <label for="newRole">Role</label>
-              <select id="newRole" name="newRole">
-                <option value="Admin">Admin</option>
-                <option value="Driver">Driver</option>
-                <option value="Passenger">Passenger</option>
-              </select>
-
-              <button class="btn btn-secondary" type="submit">Register</button>
-            </form>
-            <p id="registerMessage" class="form-success" role="status"></p>
-          </div>
-        </div>
-      </section>
+      <!-- login moved into the header for the new two-column layout -->
 
       <section id="dashboardSection" class="hidden">
         <div class="dashboard-header">
@@ -123,8 +126,12 @@
 
           <form id="scheduleForm" class="schedule-form">
             <div class="field-group">
-              <label for="route">Route</label>
+              <label for="route">Route name</label>
               <input id="route" name="route" type="text" required />
+            </div>
+            <div class="field-group">
+              <label for="routeNumber">Route number</label>
+              <input id="routeNumber" name="routeNumber" type="text" placeholder="e.g. 12A" required />
             </div>
             <div class="field-group">
               <label for="busNumber">Bus number</label>
@@ -154,20 +161,7 @@
           </form>
 
           <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Route</th>
-                  <th>Bus</th>
-                  <th>Driver</th>
-                  <th>Departure</th>
-                  <th>Arrival</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="scheduleTableBody"></tbody>
-            </table>
+            <div id="routeTimetableGroups"></div>
           </div>
         </div>
 
@@ -198,6 +192,7 @@
       </section>
     </main>
 
+    <script src="otp-utils.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
