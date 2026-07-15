@@ -34,9 +34,22 @@
               <button class="btn btn-primary btn-full" type="submit">Log in</button>
             </form>
 
+            <div class="demo-credentials">
+              <p class="hint">Demo accounts: admin / admin123, driver / driver123, passenger / passenger123</p>
+              <div class="quick-logins">
+                <button id="quickAdmin" class="btn btn-outline">Login as Admin</button>
+                <button id="quickDriver" class="btn btn-outline">Login as Driver</button>
+                <button id="quickPassenger" class="btn btn-outline">Login as Passenger</button>
+              </div>
+            </div>
+
             <div class="auth-actions">
               <a href="#" class="forgot">Forgotten password?</a>
               <button id="createAccountBtn" class="btn btn-outline btn-full" type="button">Create new account</button>
+            </div>
+
+            <div class="auth-actions">
+              <button id="resetDemoBtn" class="btn btn-outline" type="button">Reset demo data</button>
             </div>
 
             <!-- OTP UI moved to otp.html -->
@@ -157,6 +170,14 @@
                 <option value="Departed">Departed</option>
               </select>
             </div>
+            <div class="field-group">
+              <label for="busType">Bus type</label>
+              <select id="busType" name="busType">
+                <option value="Normal">Normal</option>
+                <option value="Semi Luxiri">Semi Luxiri</option>
+                <option value="Luxire">Luxire</option>
+              </select>
+            </div>
             <button id="scheduleSubmitBtn" class="btn btn-primary" type="submit">Add schedule</button>
           </form>
 
@@ -194,5 +215,21 @@
 
     <script src="otp-utils.js"></script>
     <script src="app.js"></script>
+    <!-- Price modal -->
+    <div id="priceModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-overlay" data-action="close"></div>
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="priceModalTitle">
+        <button class="action-btn" data-action="close">Close</button>
+        <h3 id="priceModalTitle">Fare prices</h3>
+        <div id="priceContent">
+          <table id="priceTable">
+            <thead>
+              <tr><th>Type</th><th>Fare (LKR)</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

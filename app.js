@@ -21,7 +21,9 @@ const defaultState = {
       driverName: 'John',
       departureTime: '08:00',
       arrivalTime: '09:15',
-      status: 'On Time'
+      status: 'On Time',
+      type: 'Normal',
+      priceBase: 1430
     },
     {
       id: 2,
@@ -31,7 +33,9 @@ const defaultState = {
       driverName: 'Sara',
       departureTime: '10:30',
       arrivalTime: '11:45',
-      status: 'Delayed'
+      status: 'Delayed',
+      type: 'Semi Luxiri',
+      priceBase: 1660
     },
     {
       id: 3,
@@ -41,7 +45,9 @@ const defaultState = {
       driverName: 'John',
       departureTime: '13:00',
       arrivalTime: '14:00',
-      status: 'Departed'
+      status: 'Departed',
+      type: 'Luxire',
+      priceBase: 1970
     }
   ]
 };
@@ -216,6 +222,14 @@ function render() {
   renderAdminPanel();
   renderDriverPanel();
   renderPassengerPanel();
+  // Ensure price modal is only visible/available for passengers
+  const priceModal = document.getElementById('priceModal');
+  if (priceModal) {
+    const isPassenger = state.currentUser?.role === 'Passenger';
+    priceModal.classList.toggle('hidden', !isPassenger);
+    priceModal.setAttribute('aria-hidden', !isPassenger ? 'true' : 'false');
+    if (!isPassenger) closePriceModal();
+  }
 }
 
 function getUserDisplayName(user) {
@@ -395,6 +409,7 @@ function renderPassengerPanel() {
                   <th>Departure</th>
                   <th>Arrival</th>
                   <th>Status</th>
+                  <th>Fare</th>
                 </tr>
               </thead>
               <tbody>
@@ -408,6 +423,7 @@ function renderPassengerPanel() {
                         <td>${trip.departureTime}</td>
                         <td>${trip.arrivalTime}</td>
                         <td><span class="status-pill ${getStatusClass(trip.status)}">${trip.status}</span></td>
+                        <td><button class="price-btn" data-action="price" data-id="${trip.id}">${formatCurrency(trip.priceBase || 1200)}</button></td>
                       </tr>
                     `
                   )
@@ -596,7 +612,9 @@ function handleScheduleSubmit(event) {
     driverName: String(formData.get('driverName') || '').trim(),
     departureTime: String(formData.get('departureTime') || '').trim(),
     arrivalTime: String(formData.get('arrivalTime') || '').trim(),
-    status: String(formData.get('status') || 'On Time')
+    status: String(formData.get('status') || 'On Time'),
+    type: String(formData.get('busType') || 'Normal'),
+    priceBase: Number(formData.get('priceBase')) || 1200
   };
 
   if (!newSchedule.route || !newSchedule.routeNumber || !newSchedule.busNumber || !newSchedule.driverName || !newSchedule.departureTime || !newSchedule.arrivalTime) {
@@ -612,6 +630,58 @@ function handleScheduleSubmit(event) {
   saveState();
   resetForm();
   render();
+}
+
+function formatCurrency(v) {
+  return Number(v).toLocaleString('en-US');
+}
+
+function computeFares(base) {
+  const normal = Math.round(base);
+  const semi = Math.round(base * 1.25);
+  const lux = Math.round(base * 1.6);
+  return [
+    { type: 'Normal', fare: normal },
+    { type: 'Semi Luxiri', fare: semi },
+    { type: 'Luxire', fare: lux }
+  ];
+}
+
+function showPriceModal(scheduleId) {
+  // only allow passengers to open the modal
+  if (state.currentUser?.role !== 'Passenger') return;
+  const modal = document.getElementById('priceModal');
+  const tbody = document.querySelector('#priceTable tbody');
+  const schedule = getScheduleById(Number(scheduleId));
+  if (!modal || !tbody || !schedule) return;
+
+  const fares = computeFares(schedule.priceBase || 1200);
+  tbody.innerHTML = fares.map(f => `<tr><td>${f.type}</td><td>${formatCurrency(f.fare)}</td></tr>`).join('');
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closePriceModal() {
+  const modal = document.getElementById('priceModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function handlePassengerClick(event) {
+  const el = event.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.getAttribute('data-action');
+  const id = el.getAttribute('data-id');
+  if (action === 'price') {
+    showPriceModal(id);
+    return;
+  }
+  if (action === 'close') {
+    closePriceModal();
+    return;
+  }
 }
 
 function handleTableClick(event) {
@@ -640,6 +710,7 @@ function handleTableClick(event) {
     document.getElementById('departureTime').value = schedule.departureTime;
     document.getElementById('arrivalTime').value = schedule.arrivalTime;
     document.getElementById('status').value = schedule.status;
+    document.getElementById('busType').value = schedule.type || 'Normal';
     document.getElementById('scheduleSubmitBtn').textContent = 'Update schedule';
   }
 }
@@ -671,12 +742,17 @@ function attachEvents() {
   const scheduleForm = document.getElementById('scheduleForm');
   const timetableGroups = document.getElementById('routeTimetableGroups');
   const driverTrips = document.getElementById('driverTrips');
+  const passengerTrips = document.getElementById('passengerTrips');
   const searchRoute = document.getElementById('searchRoute');
   const statusFilter = document.getElementById('statusFilter');
   const logoutBtn = document.getElementById('logoutBtn');
   const verifyOtpBtn = document.getElementById('verifyOtpBtn');
   const resendOtpBtn = document.getElementById('resendOtpBtn');
   const createAccountBtn = document.getElementById('createAccountBtn');
+  const resetDemoBtn = document.getElementById('resetDemoBtn');
+  const quickAdmin = document.getElementById('quickAdmin');
+  const quickDriver = document.getElementById('quickDriver');
+  const quickPassenger = document.getElementById('quickPassenger');
   const registerPanel = document.getElementById('registerPanel');
 
   if (loginForm) loginForm.addEventListener('submit', handleLogin);
@@ -689,15 +765,53 @@ function attachEvents() {
       document.getElementById('newUsername')?.focus();
     }
   });
+  if (resetDemoBtn) resetDemoBtn.addEventListener('click', resetDemoData);
+  if (quickAdmin) quickAdmin.addEventListener('click', () => quickLogin('Admin'));
+  if (quickDriver) quickDriver.addEventListener('click', () => quickLogin('Driver'));
+  if (quickPassenger) quickPassenger.addEventListener('click', () => quickLogin('Passenger'));
   if (driverTrips) driverTrips.addEventListener('change', handleDriverStatusChange);
+  if (passengerTrips) passengerTrips.addEventListener('click', handlePassengerClick);
   if (searchRoute) searchRoute.addEventListener('input', renderPassengerPanel);
   if (statusFilter) statusFilter.addEventListener('change', renderPassengerPanel);
   if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
   if (verifyOtpBtn) verifyOtpBtn.addEventListener('click', handleVerifyOtp);
   if (resendOtpBtn) resendOtpBtn.addEventListener('click', handleResendOtp);
+  const priceModal = document.getElementById('priceModal');
+  if (priceModal) priceModal.addEventListener('click', handlePassengerClick);
+  // fallback: handle any data-action clicks anywhere on the page
+  document.addEventListener('click', handlePassengerClick);
+  // allow Escape key to close modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closePriceModal();
+  });
+}
+
+function quickLogin(role) {
+  const users = getUsers();
+  const candidate = users.find(u => u.role === role) || users.find(u => (u.username || '').toLowerCase() === role.toLowerCase());
+  if (!candidate) {
+    alert('Demo user not found. Try Reset demo data first.');
+    return;
+  }
+  state.currentUser = { ...candidate, name: candidate.displayName || candidate.username };
+  saveState();
+  render();
+}
+
+function resetDemoData() {
+  if (!confirm('Reset demo data? This will clear saved schedules and accounts and reload the app.')) return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.clear();
+  } catch (e) {
+    console.warn('Unable to clear storage', e);
+  }
+  location.reload();
 }
 
 window.addEventListener('DOMContentLoaded', () => {
   attachEvents();
+  // ensure modal is closed on startup
+  closePriceModal();
   render();
 });

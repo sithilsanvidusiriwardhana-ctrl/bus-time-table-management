@@ -112,6 +112,19 @@ input[type="text"], input[type="password"] {
   border: 2px solid rgba(30,136,229,0.12);
 }
 
+.btn[ id="resetDemoBtn"], .btn-reset {
+  background: transparent;
+  color: var(--primary-dark);
+  border: 1px dashed var(--border);
+  padding: 0.5rem 0.8rem;
+  border-radius: 10px;
+}
+
+.demo-credentials { margin-top: 0.8rem; text-align: center; }
+.demo-credentials .hint { color: var(--muted); margin-bottom: 0.4rem; }
+.quick-logins { display:flex; gap:0.5rem; justify-content:center; flex-wrap:wrap; }
+.quick-logins .btn-outline { padding:0.45rem 0.6rem; border-width:1px; }
+
 .auth-actions { margin-top: 1rem; text-align: center; }
 .auth-actions .forgot { display: block; margin-bottom: 0.8rem; color: white; opacity: 0.9; }
 .meta { margin-top: 1rem; text-align: center; color: rgba(255,255,255,0.9); font-size: 0.9rem; }
@@ -432,6 +445,46 @@ th {
   font-size: 0.85rem;
   font-weight: 600;
 }
+
+/* Price button and modal */
+.price-btn {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 8000;
+}
+
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(2,6,23,0.5);
+}
+
+.modal-content {
+  position: relative;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1rem;
+  width: min(720px, calc(100% - 2rem));
+  max-height: 80vh;
+  overflow: auto;
+  box-shadow: 0 20px 40px rgba(2,6,23,0.2);
+}
+
+#priceTable th, #priceTable td { padding: 0.6rem; border-bottom: 1px solid var(--border); }
+
+/* ensure hidden modal cannot be shown by later .modal rule */
+.modal.hidden { display: none; }
 
 .status-on-time {
   background: #eaf7ec;
