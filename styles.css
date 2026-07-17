@@ -25,6 +25,103 @@ body {
   line-height: 1.6;
 }
 
+.page-body {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e8f1ff, #f8fbff);
+}
+
+.page-shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 3rem;
+}
+
+.page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-nav a {
+  text-decoration: none;
+  color: var(--primary-dark);
+  font-weight: 600;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(30, 136, 229, 0.08);
+}
+
+.page-nav a.active,
+.page-nav a:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.page-main {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.hero-panel {
+  background: linear-gradient(130deg, #0f172a, #2563eb);
+  color: white;
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+}
+
+.role-card {
+  padding: 1.4rem;
+}
+
+.role-list {
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-right: 0.35rem;
+}
+
+.status-pill.passenger {
+  background: #fff7ed;
+  color: var(--passenger);
+}
+
+.status-pill.driver {
+  background: #f5f3ff;
+  color: var(--driver);
+}
+
+.status-pill.admin {
+  background: #ecfeff;
+  color: var(--admin);
+}
+
+.trip-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  margin-top: 0.8rem;
+  background: #fbfdff;
+}
+
+.role-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 .container {
   width: min(1140px, calc(100% - 2rem));
   margin: 0 auto;
@@ -202,6 +299,18 @@ input[type="text"], input[type="password"] {
   margin: -1.2rem 0 1.5rem;
 }
 
+.feature-link {
+  display: inline-block;
+  margin-top: 0.7rem;
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.feature-link:hover {
+  text-decoration: underline;
+}
+
 .card,
 .panel {
   background: var(--surface);
@@ -295,6 +404,10 @@ select {
   align-items: center;
   margin-bottom: 1rem;
   gap: 1rem;
+}
+
+.dashboard-shell {
+  grid-column: 1 / -1;
 }
 
 .dashboard-actions {

@@ -216,7 +216,39 @@ function renderOtpSection() {
   }
 }
 
+function getRolePage(role) {
+  switch (role) {
+    case 'Admin':
+      return 'admin.html';
+    case 'Driver':
+      return 'driver.html';
+    case 'Passenger':
+      return 'passenger.html';
+    default:
+      return 'index.html';
+  }
+}
+
+function redirectToRolePage() {
+  const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+  if (!state.currentUser || currentPage === 'otp.html') {
+    return;
+  }
+
+  const targetPage = getRolePage(state.currentUser.role);
+  if (currentPage !== targetPage) {
+    window.location.replace(targetPage);
+  }
+}
+
 function render() {
+  if (state.currentUser) {
+    redirectToRolePage();
+    if (window.location.pathname.split('/').pop() !== getRolePage(state.currentUser.role)) {
+      return;
+    }
+  }
+
   renderOtpSection();
   renderDashboard();
   renderAdminPanel();
@@ -733,7 +765,7 @@ function handleLogout() {
   clearOtpState();
   saveState();
   resetForm();
-  render();
+  window.location.replace('index.html');
 }
 
 function attachEvents() {

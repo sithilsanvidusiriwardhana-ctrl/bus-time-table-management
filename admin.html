@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Portal | Bus Time Table</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-body">
+    <div class="page-shell">
+      <nav class="page-nav" aria-label="Portal navigation">
+        <a href="index.html">Home</a>
+        <a href="passenger.html">Passenger</a>
+        <a href="driver.html">Driver</a>
+        <a href="admin.html" class="active">Admin</a>
+      </nav>
+
+      <main class="page-main">
+        <section class="hero-panel">
+          <p class="eyebrow">Admin control center</p>
+          <h1>Manage the whole transport network</h1>
+          <p>Monitor schedules, route performance, and driver activity from one place.</p>
+          <ul class="role-list">
+            <li><span class="status-pill admin">Overview</span> 3 active routes are currently operating.</li>
+            <li><span class="status-pill admin">Drivers</span> 2 drivers are assigned today.</li>
+            <li><span class="status-pill admin">Alerts</span> 1 route is delayed and needs attention.</li>
+          </ul>
+        </section>
+
+        <section class="card role-card">
+          <div class="dashboard-actions">
+            <button id="portalLogoutBtn" class="btn btn-secondary" type="button">Logout</button>
+          </div>
+          <h2>Administrative actions</h2>
+          <div class="trip-card">
+            <h3>Route management</h3>
+            <p>Add, edit, or remove schedules with one click.</p>
+          </div>
+          <div class="trip-card">
+            <h3>Driver assignments</h3>
+            <p>Balance coverage and keep trip slots up to date.</p>
+          </div>
+          <div class="trip-card">
+            <h3>Service alerts</h3>
+            <p>Notify passengers and drivers about disruptions.</p>
+          </div>
+        </section>
+
+        <section id="dashboardSection" class="dashboard-shell">
+          <div class="dashboard-header">
+            <div>
+              <p class="eyebrow">Signed in as</p>
+              <h2 id="dashboardTitle">Admin dashboard</h2>
+            </div>
+            <div class="dashboard-actions">
+              <span id="userRoleBadge" class="role-badge">Admin</span>
+              <button id="logoutBtn" class="btn btn-secondary" type="button">Logout</button>
+            </div>
+          </div>
+
+          <div id="welcomeCard" class="welcome-card"></div>
+
+          <div id="adminPanel" class="panel hidden">
+            <div class="panel-heading">
+              <h3>Admin management</h3>
+              <p>Control all bus schedules and trip status.</p>
+            </div>
+            <div class="summary-grid">
+              <article class="summary-card">
+                <h4>Total schedules</h4>
+                <p id="totalSchedules">0</p>
+              </article>
+              <article class="summary-card">
+                <h4>Drivers</h4>
+                <p id="totalDrivers">0</p>
+              </article>
+              <article class="summary-card">
+                <h4>Active routes</h4>
+                <p id="activeRoutes">0</p>
+              </article>
+            </div>
+
+            <form id="scheduleForm" class="schedule-form">
+              <div class="field-group">
+                <label for="route">Route name</label>
+                <input id="route" name="route" type="text" required />
+              </div>
+              <div class="field-group">
+                <label for="routeNumber">Route number</label>
+                <input id="routeNumber" name="routeNumber" type="text" placeholder="e.g. 12A" required />
+              </div>
+              <div class="field-group">
+                <label for="busNumber">Bus number</label>
+                <input id="busNumber" name="busNumber" type="text" required />
+              </div>
+              <div class="field-group">
+                <label for="driverName">Driver</label>
+                <input id="driverName" name="driverName" type="text" required />
+              </div>
+              <div class="field-group">
+                <label for="departureTime">Departure</label>
+                <input id="departureTime" name="departureTime" type="time" required />
+              </div>
+              <div class="field-group">
+                <label for="arrivalTime">Arrival</label>
+                <input id="arrivalTime" name="arrivalTime" type="time" required />
+              </div>
+              <div class="field-group">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                  <option value="On Time">On Time</option>
+                  <option value="Delayed">Delayed</option>
+                  <option value="Departed">Departed</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label for="busType">Bus type</label>
+                <select id="busType" name="busType">
+                  <option value="Normal">Normal</option>
+                  <option value="Semi Luxiri">Semi Luxiri</option>
+                  <option value="Luxire">Luxire</option>
+                </select>
+              </div>
+              <button id="scheduleSubmitBtn" class="btn btn-primary" type="submit">Add schedule</button>
+            </form>
+
+            <div class="table-wrap">
+              <div id="routeTimetableGroups"></div>
+            </div>
+          </div>
+          <div id="driverPanel" class="panel hidden"></div>
+          <div id="passengerPanel" class="panel hidden"></div>
+        </section>
+      </main>
+    </div>
+    <script src="otp-utils.js"></script>
+    <script src="app.js"></script>
+    <script src="portal-auth.js"></script>
+  </body>
+</html>

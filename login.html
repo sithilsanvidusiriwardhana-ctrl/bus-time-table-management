@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | Bus Time Table</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-body">
+    <div class="page-shell">
+      <nav class="page-nav" aria-label="Portal navigation">
+        <a href="index.html">Home</a>
+        <a href="login.html" class="active">Login</a>
+        <a href="passenger.html">Passenger</a>
+        <a href="driver.html">Driver</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+
+      <main class="page-main">
+        <section class="hero-panel">
+          <p class="eyebrow">Secure portal</p>
+          <h1>Bus Time Table Management</h1>
+          <p>Choose the right portal to manage routes, trip updates, and commuter travel.</p>
+          <ul class="role-list">
+            <li><strong>Passenger:</strong> view schedules, fares, and route availability.</li>
+            <li><strong>Driver:</strong> review trips and update live status from one screen.</li>
+            <li><strong>Admin:</strong> manage all schedules, buses, and route health.</li>
+          </ul>
+        </section>
+
+        <section class="card role-card">
+          <h2>Login</h2>
+          <form id="portalLoginForm">
+            <label for="loginUsername">Username</label>
+            <input id="loginUsername" name="portalUsername" type="text" placeholder="Enter username" required />
+
+            <label for="loginPassword">Password</label>
+            <input id="loginPassword" name="portalPassword" type="password" placeholder="Enter password" required />
+
+            <button class="btn btn-primary" type="submit">Sign in</button>
+          </form>
+          <p id="portalMessage" class="form-success" role="status"></p>
+            <a class="btn btn-secondary" href="passenger.html">Passenger demo</a>
+            <a class="btn btn-outline" href="driver.html">Driver demo</a>
+            <a class="btn btn-outline" href="admin.html">Admin demo</a>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="portal-auth.js"></script>
+  </body>
+</html>
