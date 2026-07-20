@@ -317,9 +317,20 @@ function renderAdminPanel() {
   const timetableGroups = document.getElementById('routeTimetableGroups');
   if (!timetableGroups) return;
 
+  // Populate the driver dropdown with all registered Driver-role users
+  const driverSelect = document.getElementById('driverName');
+  if (driverSelect) {
+    const drivers = getUsers().filter((u) => u.role === 'Driver');
+    const currentVal = driverSelect.value;
+    driverSelect.innerHTML = '<option value="">— Select a driver —</option>' +
+      drivers.map((d) => `<option value="${d.username}">${d.displayName || d.username}</option>`).join('');
+    if (currentVal) driverSelect.value = currentVal;
+  }
+
   document.getElementById('totalSchedules').textContent = state.schedules.length;
-  document.getElementById('totalDrivers').textContent = new Set(state.schedules.map((item) => item.driverName)).size;
+  document.getElementById('totalDrivers').textContent = getUsers().filter((u) => u.role === 'Driver').length;
   document.getElementById('activeRoutes').textContent = state.schedules.filter((item) => item.status !== 'Departed').length;
+  renderDriverAccountsList();
 
   const groupedSchedules = groupSchedulesByRoute(state.schedules);
 
@@ -376,7 +387,16 @@ function renderDriverPanel() {
   const driverTrips = document.getElementById('driverTrips');
   if (!driverTrips || state.currentUser?.role !== 'Driver') return;
 
-  const matchingTrips = state.schedules.filter((trip) => trip.driverName.toLowerCase() === state.currentUser.displayName.toLowerCase() || trip.driverName.toLowerCase() === state.currentUser.username.toLowerCase());
+  const currentUsername = String(state.currentUser.username || '').toLowerCase();
+  const currentDisplayName = String(state.currentUser.displayName || state.currentUser.name || '').toLowerCase();
+
+  const matchingTrips = state.schedules.filter((trip) => {
+    // Primary match: by assigned username (set when admin assigns via dropdown)
+    if (trip.assignedDriverUsername && trip.assignedDriverUsername.toLowerCase() === currentUsername) return true;
+    // Fallback: by display name or username in the driverName field (legacy schedules)
+    const tripDriver = String(trip.driverName || '').toLowerCase();
+    return tripDriver === currentDisplayName || tripDriver === currentUsername;
+  });
 
   if (!matchingTrips.length) {
     driverTrips.innerHTML = '<p>No assigned trips yet.</p>';
@@ -548,7 +568,8 @@ function handleRegister(event) {
   const displayName = String(formData.get('displayName') || '').trim();
   const username = String(formData.get('newUsername') || '').trim();
   const password = String(formData.get('newPassword') || '').trim();
-  const role = String(formData.get('newRole') || 'Passenger');
+  // Always force Passenger — users cannot self-register as Driver or Admin
+  const role = 'Passenger';
 
   if (!displayName || !username || !password) {
     setRegisterMessage('Please fill in all fields to create an account.');
@@ -636,12 +657,15 @@ function handleResendOtp() {
 function handleScheduleSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
+  const assignedUsername = String(formData.get('driverName') || '').trim();
+  const assignedUser = getUsers().find((u) => u.username === assignedUsername);
   const newSchedule = {
     id: editingScheduleId || Date.now(),
     route: String(formData.get('route') || '').trim(),
     routeNumber: String(formData.get('routeNumber') || '').trim(),
     busNumber: String(formData.get('busNumber') || '').trim(),
-    driverName: String(formData.get('driverName') || '').trim(),
+    driverName: assignedUser ? (assignedUser.displayName || assignedUser.username) : assignedUsername,
+    assignedDriverUsername: assignedUsername,
     departureTime: String(formData.get('departureTime') || '').trim(),
     arrivalTime: String(formData.get('arrivalTime') || '').trim(),
     status: String(formData.get('status') || 'On Time'),
@@ -662,6 +686,63 @@ function handleScheduleSubmit(event) {
   saveState();
   resetForm();
   render();
+}
+
+function handleAdminCreateDriver(event) {
+  event.preventDefault();
+  const msgEl = document.getElementById('createDriverMessage');
+  const formData = new FormData(event.target);
+  const displayName = String(formData.get('driverFullName') || '').trim();
+  const username = String(formData.get('driverUsername') || '').trim().toLowerCase();
+  const password = String(formData.get('driverPassword') || '').trim();
+
+  function setMsg(text, isError = false) {
+    if (msgEl) {
+      msgEl.textContent = text;
+      msgEl.style.color = isError ? 'var(--danger)' : 'var(--admin)';
+    }
+  }
+
+  if (!displayName || !username || !password) {
+    setMsg('Please fill in all fields.', true);
+    return;
+  }
+
+  if (getUsers().some((u) => u.username.toLowerCase() === username)) {
+    setMsg('That username is already taken.', true);
+    return;
+  }
+
+  const newDriver = { username, password, role: 'Driver', displayName };
+  state.users = [...getUsers(), newDriver];
+  saveState();
+  event.target.reset();
+  setMsg(`Driver account created for ${displayName}. They can now log in.`);
+  renderAdminPanel();
+}
+
+function renderDriverAccountsList() {
+  const listEl = document.getElementById('driverAccountsList');
+  if (!listEl) return;
+  const drivers = getUsers().filter((u) => u.role === 'Driver');
+  if (!drivers.length) {
+    listEl.innerHTML = '<p>No driver accounts yet.</p>';
+    return;
+  }
+  listEl.innerHTML = `
+    <table>
+      <thead><tr><th>Name</th><th>Username</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${drivers.map((d) => `
+          <tr>
+            <td>${d.displayName || d.username}</td>
+            <td>${d.username}</td>
+            <td><button class="action-btn delete-btn" data-action="delete-driver" data-username="${d.username}">Remove</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
 }
 
 function formatCurrency(v) {
@@ -738,7 +819,18 @@ function handleTableClick(event) {
     document.getElementById('route').value = schedule.route;
     document.getElementById('routeNumber').value = schedule.routeNumber || '';
     document.getElementById('busNumber').value = schedule.busNumber;
-    document.getElementById('driverName').value = schedule.driverName;
+    // Set driver dropdown: prefer stored username, fallback to name match
+    const driverSel = document.getElementById('driverName');
+    if (driverSel) {
+      driverSel.value = schedule.assignedDriverUsername || '';
+      // If username not found in options, try matching display name
+      if (!driverSel.value) {
+        const matchOpt = Array.from(driverSel.options).find(
+          (o) => o.text.toLowerCase() === String(schedule.driverName || '').toLowerCase()
+        );
+        if (matchOpt) driverSel.value = matchOpt.value;
+      }
+    }
     document.getElementById('departureTime').value = schedule.departureTime;
     document.getElementById('arrivalTime').value = schedule.arrivalTime;
     document.getElementById('status').value = schedule.status;
@@ -791,6 +883,18 @@ function attachEvents() {
   if (registerForm) registerForm.addEventListener('submit', handleRegister);
   if (scheduleForm) scheduleForm.addEventListener('submit', handleScheduleSubmit);
   if (timetableGroups) timetableGroups.addEventListener('click', handleTableClick);
+  const createDriverForm = document.getElementById('createDriverForm');
+  if (createDriverForm) createDriverForm.addEventListener('submit', handleAdminCreateDriver);
+  const driverAccountsList = document.getElementById('driverAccountsList');
+  if (driverAccountsList) driverAccountsList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="delete-driver"]');
+    if (!btn) return;
+    const uname = btn.getAttribute('data-username');
+    if (!uname || !confirm(`Remove driver account "${uname}"?`)) return;
+    state.users = state.users.filter((u) => u.username !== uname);
+    saveState();
+    renderAdminPanel();
+  });
   if (createAccountBtn && registerPanel) createAccountBtn.addEventListener('click', () => {
     registerPanel.classList.toggle('hidden');
     if (!registerPanel.classList.contains('hidden')) {

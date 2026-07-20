@@ -40,45 +40,16 @@
               <button class="btn btn-primary btn-full" type="submit">Log in</button>
             </form>
 
-            <div class="demo-credentials">
-              <p class="hint">Demo accounts: admin / admin123, driver / driver123, passenger / passenger123</p>
-      
-            </div>
 
             <div class="auth-actions">
               <a href="#" class="forgot">Forgotten password?</a>
-              <button id="createAccountBtn" class="btn btn-outline btn-full" type="button">Create new account</button>
+              <a href="register.html" class="btn btn-outline btn-full" id="createAccountBtn">Create new account</a>
             </div>
 
-            <div class="auth-actions">
-              <button id="resetDemoBtn" class="btn btn-outline" type="button">Reset demo data</button>
-            </div>
 
             <!-- OTP UI moved to otp.html -->
 
-            <div id="registerPanel" class="register-panel hidden">
-              <h3>Create account</h3>
-              <form id="registerForm">
-                <label for="displayName">Full name</label>
-                <input id="displayName" name="displayName" type="text" placeholder="Enter full name" required />
 
-                <label for="newUsername">Username</label>
-                <input id="newUsername" name="newUsername" type="text" placeholder="Choose username" required />
-
-                <label for="newPassword">Password</label>
-                <input id="newPassword" name="newPassword" type="password" placeholder="Choose password" required />
-
-                <label for="newRole">Role</label>
-                <select id="newRole" name="newRole">
-                  <option value="Admin">Admin</option>
-                  <option value="Driver">Driver</option>
-                  <option value="Passenger">Passenger</option>
-                </select>
-
-                <button class="btn btn-secondary btn-full" type="submit">Register</button>
-              </form>
-              <p id="registerMessage" class="form-success" role="status"></p>
-            </div>
 
             <p class="meta">© Bus Time Table</p>
             <p id="loginError" class="form-error" role="alert"></p>
