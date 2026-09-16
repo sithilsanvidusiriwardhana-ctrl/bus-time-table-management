@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OTP Verification</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <section class="card" style="max-width:480px;margin:3rem auto;padding:1.25rem;">
+        <h2 id="pageTitle">Verify OTP</h2>
+        <p id="infoMessage">Waiting for OTP...</p>
+
+        <label for="otpInput">OTP code</label>
+        <input id="otpInput" type="text" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit OTP" />
+
+        <div style="display:flex;gap:0.6rem;margin-top:0.9rem;">
+          <button id="verifyBtn" class="btn btn-primary">Verify OTP</button>
+          <button id="resendBtn" class="btn btn-secondary">Resend</button>
+        </div>
+
+        <p id="otpStatus" class="form-error" style="margin-top:0.8rem;"></p>
+        <p style="margin-top:1rem;color:var(--muted);">If you reached this page unexpectedly, <a href="index.html">return to the home page</a>.</p>
+      </section>
+    </main>
+
+    <script src="otp-utils.js"></script>
+    <script>
+      const STORAGE_KEY = 'bus-time-table-management-state';
+
+      function loadPending() {
+        const otp = sessionStorage.getItem('pendingOtp');
+        const userJson = sessionStorage.getItem('pendingUser');
+        const action = sessionStorage.getItem('pendingAction');
+        return { otp, user: userJson ? JSON.parse(userJson) : null, action };
+      }
+
+      function saveState(state) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function readStateOrDefault() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { users: [], currentUser: null, schedules: [] };
+        try { return JSON.parse(raw); } catch (e) { return { users: [], currentUser: null, schedules: [] }; }
+      }
+
+      function showInfo(text) {
+        document.getElementById('infoMessage').textContent = text;
+      }
+
+      function showStatus(text, isError) {
+        const el = document.getElementById('otpStatus');
+        el.textContent = text || '';
+        el.style.color = isError ? 'var(--danger)' : 'var(--admin)';
+      }
+
+      function init() {
+        const { otp, user, action } = loadPending();
+        if (!otp || !user) {
+          showInfo('No pending OTP request found. Return to login to start again.');
+          return;
+        }
+
+        showInfo(`Demo OTP: ${otp}. Enter it below to continue.`);
+
+        document.getElementById('verifyBtn').addEventListener('click', () => {
+          const entered = String(document.getElementById('otpInput').value || '').trim();
+          if (!entered) { showStatus('Please enter the OTP.', true); return; }
+          if (!otpUtils.isValidOtp(entered, otp)) { showStatus('Incorrect OTP. Try again.', true); return; }
+
+          const state = readStateOrDefault();
+
+          if (action === 'register') {
+            const exists = Array.isArray(state.users) && state.users.some(
+              (u) => (u.username || '').toLowerCase() === (user.username || '').toLowerCase()
+            );
+
+            if (!exists) {
+              state.users = [...(state.users || []), user];
+            }
+            state.currentUser = { ...user, name: user.displayName || user.name };
+          } else {
+            state.currentUser = { ...user, name: user.displayName || user.name };
+          }
+
+          saveState(state);
+
+          sessionStorage.removeItem('pendingOtp');
+          sessionStorage.removeItem('pendingUser');
+          sessionStorage.removeItem('pendingAction');
+
+          showStatus('Verification successful. Redirecting to passenger dashboard...', false);
+          setTimeout(() => {
+            window.location.replace('passenger.html');
+          }, 400);
+        });
+
+        document.getElementById('resendBtn').addEventListener('click', () => {
+          const newOtp = otpUtils.generateOtp(6);
+          sessionStorage.setItem('pendingOtp', newOtp);
+          showInfo(`A new demo OTP was generated: ${newOtp}`);
+          showStatus('A new OTP was sent (demo).', false);
+        });
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    </script>
+  </body>
+</html>

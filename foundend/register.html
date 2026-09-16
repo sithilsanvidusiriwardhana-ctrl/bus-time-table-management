@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Account | Bus Time Table</title>
+    <meta name="description" content="Create a free passenger account to browse routes, track buses, and plan your journey." />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* ── Page shell ── */
+      .reg-body {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #e8f1ff 0%, #f8fbff 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .reg-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 480px;
+        max-width: 940px;
+        width: 100%;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 24px 64px rgba(15, 23, 42, 0.14);
+      }
+
+      /* ── Left panel ── */
+      .reg-left {
+        background: linear-gradient(145deg, #0f172a 0%, #1e40af 60%, #2563eb 100%);
+        color: white;
+        padding: 3rem 2.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .reg-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 2.5rem;
+      }
+
+      .reg-brand-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+      }
+
+      .reg-brand-name {
+        font-size: 1rem;
+        font-weight: 700;
+        opacity: 0.95;
+        letter-spacing: 0.02em;
+      }
+
+      .reg-headline {
+        font-size: clamp(1.75rem, 3.5vw, 2.4rem);
+        font-weight: 800;
+        line-height: 1.15;
+        margin: 0 0 1rem;
+      }
+
+      .reg-headline .hl {
+        color: #60a5fa;
+      }
+
+      .reg-sub {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 1rem;
+        line-height: 1.65;
+        margin: 0 0 2.5rem;
+      }
+
+      .reg-perks {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 2.5rem;
+        display: grid;
+        gap: 1rem;
+      }
+
+      .reg-perks li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.85);
+      }
+
+      .perk-icon {
+        width: 32px;
+        height: 32px;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+        margin-top: 0.05rem;
+      }
+
+      .reg-back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: rgba(255, 255, 255, 0.7);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+      }
+
+      .reg-back-link:hover {
+        color: white;
+      }
+
+      /* ── Right panel ── */
+      .reg-right {
+        background: #ffffff;
+        padding: 3rem 2.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .reg-right h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #0f172a;
+      }
+
+      .reg-right .reg-tagline {
+        color: #6b7280;
+        margin: 0 0 2rem;
+        font-size: 0.95rem;
+      }
+
+      .reg-form {
+        display: grid;
+        gap: 1.1rem;
+      }
+
+      .reg-field {
+        display: grid;
+        gap: 0.4rem;
+      }
+
+      .reg-field label {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #374151;
+        margin: 0;
+      }
+
+      .reg-field input {
+        width: 100%;
+        border: 1.5px solid #dbe3ec;
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
+        font-size: 0.97rem;
+        background: #f9fafb;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .reg-field input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        background: #fff;
+      }
+
+      .reg-role-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #eff6ff;
+        border: 1.5px solid #bfdbfe;
+        border-radius: 10px;
+        padding: 0.65rem 1rem;
+        color: #1d4ed8;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .reg-role-badge .badge-icon {
+        font-size: 1.1rem;
+      }
+
+      .reg-role-note {
+        color: #9ca3af;
+        font-size: 0.82rem;
+        margin: 0;
+        line-height: 1.5;
+      }
+
+      .reg-submit-btn {
+        background: linear-gradient(135deg, #1e40af, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 0.9rem 1.2rem;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+        transition: transform 0.15s, box-shadow 0.15s;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+        margin-top: 0.4rem;
+      }
+
+      .reg-submit-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.38);
+      }
+
+      .reg-submit-btn:active {
+        transform: translateY(0);
+      }
+
+      .reg-message {
+        min-height: 1.2rem;
+        font-weight: 600;
+        font-size: 0.92rem;
+        text-align: center;
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        display: none;
+      }
+
+      .reg-message.visible {
+        display: block;
+      }
+
+      .reg-message.success {
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+      }
+
+      .reg-message.error {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+      }
+
+      .reg-login-link {
+        text-align: center;
+        margin-top: 1.5rem;
+        color: #6b7280;
+        font-size: 0.92rem;
+      }
+
+      .reg-login-link a {
+        color: #2563eb;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .reg-login-link a:hover {
+        text-decoration: underline;
+      }
+
+      /* ── Responsive ── */
+      @media (max-width: 780px) {
+        .reg-wrapper {
+          grid-template-columns: 1fr;
+          border-radius: 20px;
+        }
+
+        .reg-left {
+          padding: 2rem 1.75rem;
+          border-radius: 20px 20px 0 0;
+        }
+
+        .reg-right {
+          padding: 2rem 1.75rem 2.5rem;
+          border-radius: 0 0 20px 20px;
+        }
+
+        .reg-perks { margin-bottom: 1.5rem; }
+      }
+
+      @media (max-width: 420px) {
+        .reg-left { padding: 1.75rem 1.25rem; }
+        .reg-right { padding: 1.75rem 1.25rem 2rem; }
+      }
+    </style>
+  </head>
+  <body class="reg-body">
+    <div class="reg-wrapper">
+
+      <!-- LEFT: Branding panel -->
+      <div class="reg-left">
+        <div>
+          <div class="reg-brand">
+            <div class="reg-brand-icon">🚌</div>
+            <span class="reg-brand-name">Bus Time Table</span>
+          </div>
+
+          <h1 class="reg-headline">
+            Plan your journey<br /><span class="hl">with confidence.</span>
+          </h1>
+          <p class="reg-sub">
+            Create your free passenger account and get instant access to live bus schedules, routes, and fare information.
+          </p>
+
+          <ul class="reg-perks">
+            <li>
+              <div class="perk-icon">🗺️</div>
+              <span>Browse all available routes and departure times in real time.</span>
+            </li>
+            <li>
+              <div class="perk-icon">💰</div>
+              <span>Compare fares across Normal, Semi Luxiri, and Luxire bus types.</span>
+            </li>
+            <li>
+              <div class="perk-icon">⚡</div>
+              <span>Track live status — on time, delayed, or departed — before you head out.</span>
+            </li>
+          </ul>
+        </div>
+
+        <a class="reg-back-link" href="index.html">← Back to login</a>
+      </div>
+
+      <!-- RIGHT: Registration form -->
+      <div class="reg-right">
+        <h2>Create account</h2>
+        <p class="reg-tagline">Fill in your details below to get started.</p>
+
+        <form class="reg-form" id="regForm" novalidate>
+          <div class="reg-field">
+            <label for="regFullName">Full name</label>
+            <input
+              id="regFullName"
+              name="displayName"
+              type="text"
+              placeholder="e.g. Sithilsa Sanvidu"
+              autocomplete="name"
+              required
+            />
+          </div>
+
+          <div class="reg-field">
+            <label for="regUsername">Username</label>
+            <input
+              id="regUsername"
+              name="newUsername"
+              type="text"
+              placeholder="Choose a unique username"
+              autocomplete="username"
+              required
+            />
+          </div>
+
+          <div class="reg-field">
+            <label for="regPassword">Password</label>
+            <input
+              id="regPassword"
+              name="newPassword"
+              type="password"
+              placeholder="Choose a strong password"
+              autocomplete="new-password"
+              required
+            />
+          </div>
+
+          <!-- Role is always Passenger — hidden from user -->
+          <input type="hidden" name="newRole" value="Passenger" />
+
+          <div class="reg-field">
+            <label>Account type</label>
+            <div class="reg-role-badge">
+              <span class="badge-icon">🎫</span>
+              Passenger account
+            </div>
+            <p class="reg-role-note">Driver accounts are created by the administrator only.</p>
+          </div>
+
+          <div id="regMessage" class="reg-message" role="status" aria-live="polite"></div>
+
+          <button class="reg-submit-btn" type="submit" id="regSubmitBtn">
+            Create my account
+          </button>
+        </form>
+
+        <p class="reg-login-link">
+          Already have an account? <a href="index.html">Sign in here</a>
+        </p>
+      </div>
+    </div>
+
+    <script src="otp-utils.js"></script>
+    <script src="app.js"></script>
+    <script src="otp-utils.js"></script>
+    <script src="app.js"></script>
+    <script>
+      (function () {
+        function setMsg(text, type) {
+          const el = document.getElementById('regMessage');
+          el.textContent = text;
+          el.className = 'reg-message visible ' + type;
+        }
+
+        document.getElementById('regForm').addEventListener('submit', async function (e) {
+          e.preventDefault();
+          const data = new FormData(e.target);
+          const displayName = String(data.get('displayName') || '').trim();
+          const username = String(data.get('newUsername') || '').trim().toLowerCase();
+          const password = String(data.get('newPassword') || '').trim();
+          const role = String(data.get('newRole') || 'Passenger');
+
+          if (!displayName || !username || !password) {
+            setMsg('Please fill in all fields.', 'error');
+            return;
+          }
+
+          if (password.length < 4) {
+            setMsg('Password must be at least 4 characters.', 'error');
+            return;
+          }
+
+          const newUser = { name: displayName, username, password, role: 'passenger' };
+
+          try {
+            // Send data to your Node.js backend to save in MongoDB
+            const response = await fetch('/api/passengers/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newUser)
+            });
+         
+         const result = await response.json();
+
+            // Check if the response was successful (either by response.ok status or checking the response body)
+            if (!response.ok) {
+              setMsg(result.message || result.error || 'Registration failed.', 'error');
+              return;
+            }
+
+            // OTP flow handling
+            const otp = typeof otpUtils !== 'undefined' ? otpUtils.generateOtp(6) : String(Math.floor(100000 + Math.random() * 900000));
+            sessionStorage.setItem('pendingOtp', otp);
+            sessionStorage.setItem('pendingUser', JSON.stringify({ ...newUser, name: displayName }));
+            sessionStorage.setItem('pendingAction', 'register');
+
+            setMsg('Account saved to MongoDB! Redirecting to verify OTP…', 'success');
+
+            setTimeout(() => {
+              window.location.href = 'otp.html';
+            }, 900);
+
+          } catch (err) {
+            console.error('Error:', err);
+            setMsg('Could not connect to the server.', 'error');
+          }
+        });
+      })();
+    
+    </script>
+  </body>
+</html>

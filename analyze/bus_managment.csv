@@ -1,0 +1,21 @@
+Schedule_ID,Route_Number,Route_Name,Bus_Number,Bus_Type,Driver_Name,Departure_Time,Arrival_Time,Fare_LKR,Status,Passenger_Capacity,Tickets_Sold
+SCH-1001,12A,Colombo - Kandy,NC-4589,Luxire,Sithilsa Sanvidu,06:00,09:30,1200,On Time,45,42
+SCH-1002,12A,Colombo - Kandy,NC-8821,Normal,Kamal Perera,06:30,10:30,450,Departed,52,52
+SCH-1003,17,Panadura - Kandy,NB-1102,Semi Luxiri,Nimal Silva,07:00,11:15,750,Delayed,49,38
+SCH-1004,02,Colombo - Galle,ND-9931,Luxire,Sunil Jayasinghe,07:30,10:00,950,On Time,45,45
+SCH-1005,02,Colombo - Galle,NC-3341,Normal,Kamal Perera,08:15,11:30,380,Departed,52,48
+SCH-1006,12A,Colombo - Kandy,NB-7742,Semi Luxiri,Ruwan Fernando,09:00,12:45,750,On Time,49,30
+SCH-1007,87,Vavuniya - Jaffna,ND-2041,Normal,K. Ratnam,09:30,13:00,500,On Time,52,50
+SCH-1008,17,Panadura - Kandy,NC-1290,Luxire,Sithilsa Sanvidu,10:15,14:30,1350,Delayed,45,40
+SCH-1009,02,Colombo - Galle,ND-6612,Semi Luxiri,Sunil Jayasinghe,11:00,13:30,650,On Time,49,41
+SCH-1010,12A,Colombo - Kandy,NB-5520,Normal,Nimal Silva,12:00,16:15,450,On Time,52,25
+SCH-1011,15,Colombo - Anuradhapura,NC-8811,Luxire,Ruwan Fernando,12:30,17:00,1400,On Time,45,44
+SCH-1012,15,Colombo - Anuradhapura,NB-3310,Normal,Kamal Perera,13:00,18:00,550,Delayed,52,39
+SCH-1013,02,Colombo - Galle,ND-7718,Normal,Sunil Jayasinghe,13:45,17:00,380,On Time,52,51
+SCH-1014,87,Vavuniya - Jaffna,NC-9011,Semi Luxiri,K. Ratnam,14:15,17:45,850,Departed,49,46
+SCH-1015,17,Panadura - Kandy,NB-4422,Normal,Sithilsa Sanvidu,15:00,19:15,480,On Time,52,30
+SCH-1016,12A,Colombo - Kandy,ND-1188,Luxire,Ruwan Fernando,15:30,19:00,1200,On Time,45,45
+SCH-1017,02,Colombo - Galle,NC-6655,Semi Luxiri,Kamal Perera,16:00,18:30,650,Delayed,49,42
+SCH-1018,15,Colombo - Anuradhapura,ND-3390,Semi Luxiri,Nimal Silva,16:45,21:15,900,On Time,49,35
+SCH-1019,87,Vavuniya - Jaffna,NB-2244,Luxire,K. Ratnam,17:30,21:00,1500,On Time,45,41
+SCH-1020,12A,Colombo - Kandy,NC-7733,Normal,Sithilsa Sanvidu,18:15,22:30,450,On Time,52,18

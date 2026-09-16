@@ -1,0 +1,21 @@
+Bus Number,Bus Type,Driver Name,Route Number,Route Name,Departure,Arrival,Fare (LKR),Status
+NC-4589,Luxire,Sithilsa Sanvidu,12A,Colombo - Kandy,06:00,09:30,"1,200",On Time
+NC-8821,Normal,Kamal Perera,12A,Colombo - Kandy,06:30,10:30,450,Departed
+NB-1102,Semi Luxiri,Nimal Silva,17,Panadura - Kandy,07:00,11:15,750,Delayed
+ND-9931,Luxire,Sunil Jayasinghe,02,Colombo - Galle,07:30,10:00,950,On Time
+NC-3341,Normal,Kamal Perera,02,Colombo - Galle,08:15,11:30,380,Departed
+NB-7742,Semi Luxiri,Ruwan Fernando,12A,Colombo - Kandy,09:00,12:45,750,On Time
+ND-2041,Normal,K. Ratnam,87,Vavuniya - Jaffna,09:30,13:00,500,On Time
+NC-1290,Luxire,Sithilsa Sanvidu,17,Panadura - Kandy,10:15,14:30,"1,350",Delayed
+ND-6612,Semi Luxiri,Sunil Jayasinghe,02,Colombo - Galle,11:00,13:30,650,On Time
+NB-5520,Normal,Nimal Silva,12A,Colombo - Kandy,12:00,16:15,450,On Time
+NC-8811,Luxire,Ruwan Fernando,15,Colombo - Anuradhapura,12:30,17:00,"1,400",On Time
+NB-3310,Normal,Kamal Perera,15,Colombo - Anuradhapura,13:00,18:00,550,Delayed
+ND-7718,Normal,Sunil Jayasinghe,02,Colombo - Galle,13:45,17:00,380,On Time
+NC-9011,Semi Luxiri,K. Ratnam,87,Vavuniya - Jaffna,14:15,17:45,850,Departed
+NB-4422,Normal,Sithilsa Sanvidu,17,Panadura - Kandy,15:00,19:15,480,On Time
+ND-1188,Luxire,Ruwan Fernando,12A,Colombo - Kandy,15:30,19:00,"1,200",On Time
+NC-6655,Semi Luxiri,Kamal Perera,02,Colombo - Galle,16:00,18:30,650,Delayed
+ND-3390,Semi Luxiri,Nimal Silva,15,Colombo - Anuradhapura,16:45,21:15,900,On Time
+NB-2244,Luxire,K. Ratnam,87,Vavuniya - Jaffna,17:30,21:00,"1,500",On Time
+NC-7733,Normal,Sithilsa Sanvidu,12A,Colombo - Kandy,18:15,22:30,450,On Time
