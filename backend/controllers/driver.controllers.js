@@ -1,4 +1,14 @@
 import { driver } from '../modules/driver.modules.js';
+
+export const getDrivers = async (req, res) => {
+    try {
+        const drivers = await driver.find({}, { password: 0 }).sort({ name: 1 }).lean();
+        res.status(200).json({ drivers });
+    } catch (error) {
+        res.status(500).json({ message: 'Error loading drivers.', error: error.message });
+    }
+};
+
 export const registerDriver = async (req, res) => {
     try {
         const { name, username, password } = req.body;

@@ -52,6 +52,7 @@ const defaultState = {
 };
 
 let state = loadState();
+state.databaseDrivers = null;
 let editingScheduleId = null;
 
 function isValidUser(user, users = defaultState.users) {
@@ -317,15 +318,15 @@ function renderAdminPanel() {
 
   const driverSelect = document.getElementById('driverName');
   if (driverSelect) {
-    const drivers = getUsers().filter((u) => u.role === 'Driver');
+    const drivers = Array.isArray(state.databaseDrivers) ? state.databaseDrivers : [];
     const currentVal = driverSelect.value;
     driverSelect.innerHTML = '<option value="">— Select a driver —</option>' +
-      drivers.map((d) => `<option value="${d.username}">${d.displayName || d.username}</option>`).join('');
+      drivers.map((d) => `<option value="${d.username}">${d.name || d.displayName || d.username}</option>`).join('');
     if (currentVal) driverSelect.value = currentVal;
   }
 
   document.getElementById('totalSchedules').textContent = state.schedules.length;
-  document.getElementById('totalDrivers').textContent = getUsers().filter((u) => u.role === 'Driver').length;
+  document.getElementById('totalDrivers').textContent = Array.isArray(state.databaseDrivers) ? state.databaseDrivers.length : 0;
   document.getElementById('activeRoutes').textContent = state.schedules.filter((item) => item.status !== 'Departed').length;
   renderDriverAccountsList();
 
@@ -759,7 +760,7 @@ async function handleAdminCreateDriver(event) {
     }
     event.target.reset();
     setMsg(`Driver account created for ${displayName}. They can now log in.`);
-    renderAdminPanel();
+    await loadDriversFromDatabase();
   } catch (error) {
     setMsg(error.message || 'Unable to save the driver account.', true);
   }
@@ -768,7 +769,11 @@ async function handleAdminCreateDriver(event) {
 function renderDriverAccountsList() {
   const listEl = document.getElementById('driverAccountsList');
   if (!listEl) return;
-  const drivers = getUsers().filter((u) => u.role === 'Driver');
+  if (!Array.isArray(state.databaseDrivers)) {
+    listEl.innerHTML = '<p>Loading drivers...</p>';
+    return;
+  }
+  const drivers = state.databaseDrivers;
   if (!drivers.length) {
     listEl.innerHTML = '<p>No driver accounts yet.</p>';
     return;
@@ -779,7 +784,7 @@ function renderDriverAccountsList() {
       <tbody>
         ${drivers.map((d) => `
           <tr>
-            <td>${d.displayName || d.username}</td>
+            <td>${d.name || d.displayName || d.username}</td>
             <td>${d.username}</td>
             <td><button class="action-btn delete-btn" data-action="delete-driver" data-username="${d.username}">Remove</button></td>
           </tr>
@@ -787,6 +792,26 @@ function renderDriverAccountsList() {
       </tbody>
     </table>
   `;
+}
+
+async function loadDriversFromDatabase() {
+  try {
+    const response = await fetch('/api/drivers');
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to load drivers from MongoDB.');
+    }
+
+    state.databaseDrivers = Array.isArray(result.drivers) ? result.drivers : [];
+    renderAdminPanel();
+  } catch (error) {
+    state.databaseDrivers = [];
+    const listEl = document.getElementById('driverAccountsList');
+    if (listEl) {
+      listEl.innerHTML = `<p class="form-error">${error.message || 'Unable to load drivers from MongoDB.'}</p>`;
+    }
+  }
 }
 
 function formatCurrency(v) {
@@ -988,4 +1013,7 @@ window.addEventListener('DOMContentLoaded', () => {
   attachEvents();
   closePriceModal();
   render();
+  if (document.getElementById('driverAccountsList')) {
+    loadDriversFromDatabase();
+  }
 });
