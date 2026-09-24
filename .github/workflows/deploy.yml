@@ -19,6 +19,6 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: foundend 
-          branch: developer
+          branch: gh-pages
           clear : true
 
