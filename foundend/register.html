@@ -376,6 +376,19 @@
             />
           </div>
 
+          <div class="reg-field">
+            <label for="regTelephone">Telephone number</label>
+            <input
+              id="regTelephone"
+              name="telephone"
+              type="tel"
+              placeholder="e.g. +94771234567"
+              autocomplete="tel"
+              required
+            />
+            <p class="reg-role-note">Used only to send your OTP. It is not saved to your account.</p>
+          </div>
+
           <!-- Role is always Passenger — hidden from user -->
           <input type="hidden" name="newRole" value="Passenger" />
 
@@ -419,9 +432,10 @@
           const displayName = String(data.get('displayName') || '').trim();
           const username = String(data.get('newUsername') || '').trim().toLowerCase();
           const password = String(data.get('newPassword') || '').trim();
+          const telephone = String(data.get('telephone') || '').trim();
           const role = String(data.get('newRole') || 'Passenger');
 
-          if (!displayName || !username || !password) {
+          if (!displayName || !username || !password || !telephone) {
             setMsg('Please fill in all fields.', 'error');
             return;
           }
@@ -431,10 +445,9 @@
             return;
           }
 
-          const newUser = { name: displayName, username, password, role: 'passenger' };
+          const newUser = { name: displayName, username, password, role: 'passenger', telephone };
 
           try {
-            // Send data to your Node.js backend to save in MongoDB
             const response = await fetch('/api/passengers/register', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -443,19 +456,19 @@
          
          const result = await response.json();
 
-            // Check if the response was successful (either by response.ok status or checking the response body)
             if (!response.ok) {
               setMsg(result.message || result.error || 'Registration failed.', 'error');
               return;
             }
 
-            // OTP flow handling
             const otp = typeof otpUtils !== 'undefined' ? otpUtils.generateOtp(6) : String(Math.floor(100000 + Math.random() * 900000));
+            const pendingUser = { name: displayName, username, password, role: 'passenger' };
             sessionStorage.setItem('pendingOtp', otp);
-            sessionStorage.setItem('pendingUser', JSON.stringify({ ...newUser, name: displayName }));
+            sessionStorage.setItem('pendingUser', JSON.stringify(pendingUser));
+            sessionStorage.setItem('pendingTelephone', telephone);
             sessionStorage.setItem('pendingAction', 'register');
 
-            setMsg('Account saved to MongoDB! Redirecting to verify OTP…', 'success');
+            setMsg('Demo OTP prepared for your telephone number. Redirecting to verify...', 'success');
 
             setTimeout(() => {
               window.location.href = 'otp.html';

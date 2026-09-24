@@ -10,6 +10,7 @@ export const registerPassenger = async (req, res) => {
         if (existingPassenger) {
             return res.status(409).json({ message: 'Passenger with this username already exists.' });
         }
+
         const newPassenger = await Passenger.create({ name, username, password });
         res.status(201).json({ message: 'Passenger registered successfully.', passenger: newPassenger });
     } catch (error) {

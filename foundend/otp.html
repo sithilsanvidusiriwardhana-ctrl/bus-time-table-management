@@ -33,7 +33,8 @@
         const otp = sessionStorage.getItem('pendingOtp');
         const userJson = sessionStorage.getItem('pendingUser');
         const action = sessionStorage.getItem('pendingAction');
-        return { otp, user: userJson ? JSON.parse(userJson) : null, action };
+        const telephone = sessionStorage.getItem('pendingTelephone');
+        return { otp, user: userJson ? JSON.parse(userJson) : null, action, telephone };
       }
 
       function saveState(state) {
@@ -57,13 +58,14 @@
       }
 
       function init() {
-        const { otp, user, action } = loadPending();
+        const { otp, user, action, telephone } = loadPending();
         if (!otp || !user) {
           showInfo('No pending OTP request found. Return to login to start again.');
           return;
         }
 
-        showInfo(`Demo OTP: ${otp}. Enter it below to continue.`);
+        const destination = telephone ? `sent to ${telephone}` : 'generated for this registration';
+        showInfo(`Demo OTP ${destination}: ${otp}. Enter it below to continue.`);
 
         document.getElementById('verifyBtn').addEventListener('click', () => {
           const entered = String(document.getElementById('otpInput').value || '').trim();
@@ -82,6 +84,12 @@
             }
             state.currentUser = { ...user, name: user.displayName || user.name };
           } else {
+            const exists = Array.isArray(state.users) && state.users.some(
+              (savedUser) => String(savedUser.username || '').toLowerCase() === String(user.username || '').toLowerCase()
+            );
+            if (!exists) {
+              state.users = [...(state.users || []), user];
+            }
             state.currentUser = { ...user, name: user.displayName || user.name };
           }
 
@@ -90,17 +98,23 @@
           sessionStorage.removeItem('pendingOtp');
           sessionStorage.removeItem('pendingUser');
           sessionStorage.removeItem('pendingAction');
+          sessionStorage.removeItem('pendingTelephone');
 
-          showStatus('Verification successful. Redirecting to passenger dashboard...', false);
+          showStatus('Verification successful. Redirecting to your dashboard...', false);
           setTimeout(() => {
-            window.location.replace('passenger.html');
+            const rolePage = user.role === 'Driver'
+              ? 'driver.html'
+              : user.role === 'Admin'
+                ? 'admin.html'
+                : 'passenger.html';
+            window.location.replace(rolePage);
           }, 400);
         });
 
         document.getElementById('resendBtn').addEventListener('click', () => {
           const newOtp = otpUtils.generateOtp(6);
           sessionStorage.setItem('pendingOtp', newOtp);
-          showInfo(`A new demo OTP was generated: ${newOtp}`);
+          showInfo(`A new demo OTP was generated for ${telephone || 'this registration'}: ${newOtp}`);
           showStatus('A new OTP was sent (demo).', false);
         });
       }

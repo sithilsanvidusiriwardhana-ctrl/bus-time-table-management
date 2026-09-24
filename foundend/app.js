@@ -100,7 +100,7 @@ function saveState() {
 }
 
 function getScheduleById(id) {
-  return state.schedules.find((item) => item.id === id);
+  return state.schedules.find((item) => String(item.id) === String(id));
 }
 
 function getRouteNumber(schedule) {
@@ -229,6 +229,13 @@ function getRolePage(role) {
   }
 }
 
+function isAllowedRolePage(role, page) {
+  if (role === 'Admin') {
+    return ['admin.html', 'admin-drivers.html', 'admin-schedules.html'].includes(page);
+  }
+  return page === getRolePage(role);
+}
+
 function redirectToRolePage() {
   const currentPage = window.location.pathname.split('/').pop() || 'index.html';
   if (!state.currentUser) {
@@ -236,7 +243,7 @@ function redirectToRolePage() {
   }
 
   const targetPage = getRolePage(state.currentUser.role);
-  if (currentPage !== targetPage) {
+  if (!isAllowedRolePage(state.currentUser.role, currentPage)) {
     window.location.replace(targetPage);
   }
 }
@@ -244,7 +251,7 @@ function redirectToRolePage() {
 function render() {
   if (state.currentUser) {
     redirectToRolePage();
-    if (window.location.pathname.split('/').pop() !== getRolePage(state.currentUser.role)) {
+    if (!isAllowedRolePage(state.currentUser.role, window.location.pathname.split('/').pop())) {
       return;
     }
   }
@@ -314,7 +321,6 @@ function renderDashboard() {
 
 function renderAdminPanel() {
   const timetableGroups = document.getElementById('routeTimetableGroups');
-  if (!timetableGroups) return;
 
   const driverSelect = document.getElementById('driverName');
   if (driverSelect) {
@@ -325,10 +331,15 @@ function renderAdminPanel() {
     if (currentVal) driverSelect.value = currentVal;
   }
 
-  document.getElementById('totalSchedules').textContent = state.schedules.length;
-  document.getElementById('totalDrivers').textContent = Array.isArray(state.databaseDrivers) ? state.databaseDrivers.length : 0;
-  document.getElementById('activeRoutes').textContent = state.schedules.filter((item) => item.status !== 'Departed').length;
+  const totalSchedules = document.getElementById('totalSchedules');
+  const totalDrivers = document.getElementById('totalDrivers');
+  const activeRoutes = document.getElementById('activeRoutes');
+  if (totalSchedules) totalSchedules.textContent = state.schedules.length;
+  if (totalDrivers) totalDrivers.textContent = Array.isArray(state.databaseDrivers) ? state.databaseDrivers.length : 0;
+  if (activeRoutes) activeRoutes.textContent = state.schedules.filter((item) => item.status !== 'Departed').length;
   renderDriverAccountsList();
+
+  if (!timetableGroups) return;
 
   const groupedSchedules = groupSchedulesByRoute(state.schedules);
 
@@ -366,6 +377,7 @@ function renderAdminPanel() {
                       <td>${schedule.arrivalTime}</td>
                       <td><span class="status-pill ${getStatusClass(schedule.status)}">${schedule.status}</span></td>
                       <td>
+                        ${schedule.pendingStatus ? `<span class="status-pill status-delayed">Pending: ${schedule.pendingStatus}</span><button class="action-btn edit-btn" data-action="approve-status" data-id="${schedule.id}">Approve</button>` : ''}
                         <button class="action-btn edit-btn" data-action="edit" data-id="${schedule.id}">Edit</button>
                         <button class="action-btn delete-btn" data-action="delete" data-id="${schedule.id}">Delete</button>
                       </td>
@@ -385,12 +397,13 @@ function renderDriverPanel() {
   const driverTrips = document.getElementById('driverTrips');
   if (!driverTrips || state.currentUser?.role !== 'Driver') return;
 
-  const currentUsername = String(state.currentUser.username || '').toLowerCase();
-  const currentDisplayName = String(state.currentUser.displayName || state.currentUser.name || '').toLowerCase();
+  const currentUsername = String(state.currentUser.username || '').trim().toLowerCase();
+  const currentDisplayName = String(state.currentUser.displayName || state.currentUser.name || '').trim().toLowerCase();
 
   const matchingTrips = state.schedules.filter((trip) => {
-    if (trip.assignedDriverUsername && trip.assignedDriverUsername.toLowerCase() === currentUsername) return true;
-    const tripDriver = String(trip.driverName || '').toLowerCase();
+    const assignedUsername = String(trip.assignedDriverUsername || '').trim().toLowerCase();
+    if (assignedUsername) return assignedUsername === currentUsername;
+    const tripDriver = String(trip.driverName || '').trim().toLowerCase();
     return tripDriver === currentDisplayName || tripDriver === currentUsername;
   });
 
@@ -407,11 +420,12 @@ function renderDriverPanel() {
           <p class="trip-meta">Bus ${trip.busNumber} • ${trip.departureTime} to ${trip.arrivalTime}</p>
           <div class="field-group">
             <label for="status-${trip.id}">Update status</label>
-            <select id="status-${trip.id}" data-id="${trip.id}">
+            <select id="status-${trip.id}" data-id="${trip.id}" ${trip.pendingStatus ? 'disabled' : ''}>
               <option value="On Time" ${trip.status === 'On Time' ? 'selected' : ''}>On Time</option>
               <option value="Delayed" ${trip.status === 'Delayed' ? 'selected' : ''}>Delayed</option>
               <option value="Departed" ${trip.status === 'Departed' ? 'selected' : ''}>Departed</option>
             </select>
+            ${trip.pendingStatus ? `<p class="form-success">Pending admin approval: ${trip.pendingStatus}</p>` : ''}
           </div>
         </article>
       `
@@ -498,6 +512,21 @@ function getStatusClass(status) {
 
 function getUsers() {
   return Array.isArray(state.users) ? state.users : [];
+}
+
+async function readApiResponse(response) {
+  const responseText = await response.text();
+  let result = {};
+
+  try {
+    result = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    throw new Error(
+      `The server returned HTML instead of JSON (HTTP ${response.status}). Restart node server.js and open the app through http://localhost:8000.`
+    );
+  }
+
+  return result;
 }
 
 function normalizeContact(input) {
@@ -661,15 +690,18 @@ async function handleScheduleSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
   const assignedUsername = String(formData.get('driverName') || '').trim();
-  const assignedUser = getUsers().find((u) => u.username === assignedUsername);
+  const assignedUser = (Array.isArray(state.databaseDrivers) ? state.databaseDrivers : [])
+    .find((driver) => String(driver.username || '').toLowerCase() === assignedUsername.toLowerCase())
+    || getUsers().find((user) => String(user.username || '').toLowerCase() === assignedUsername.toLowerCase());
+  const assignedDriverUsername = String(assignedUser?.username || assignedUsername).trim();
   
   const newSchedule = {
     id: editingScheduleId || Date.now(),
     route: String(formData.get('route') || '').trim(),
     routeNumber: String(formData.get('routeNumber') || '').trim(),
     busNumber: String(formData.get('busNumber') || '').trim(),
-    driverName: assignedUser ? (assignedUser.displayName || assignedUser.username) : assignedUsername,
-    assignedDriverUsername: assignedUsername,
+    driverName: assignedUser ? (assignedUser.name || assignedUser.displayName || assignedUser.username) : assignedUsername,
+    assignedDriverUsername,
     departureTime: String(formData.get('departureTime') || '').trim(),
     arrivalTime: String(formData.get('arrivalTime') || '').trim(),
     status: String(formData.get('status') || 'On Time'),
@@ -794,6 +826,37 @@ function renderDriverAccountsList() {
   `;
 }
 
+async function loadSchedulesFromDatabase() {
+  try {
+    const response = await fetch('/api/shedulle');
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to load schedules from MongoDB.');
+    }
+
+    state.schedules = (Array.isArray(result.shedulles) ? result.shedulles : []).map((item) => ({
+      id: String(item._id),
+      route: item.route_name,
+      routeNumber: item.route_number,
+      busNumber: item.bus_number,
+      driverName: item.assign_driver,
+      assignedDriverUsername: item.assign_driver,
+      departureTime: item.departure_time,
+      arrivalTime: item.arrival_time,
+      status: item.status,
+      pendingStatus: item.pending_status,
+      pendingStatusDriver: item.pending_status_driver,
+      type: item.bus_type,
+      priceBase: Number(item.price_base) || 1200
+    }));
+    saveState();
+    render();
+  } catch (error) {
+    console.error('Unable to load schedules from MongoDB.', error);
+  }
+}
+
 async function loadDriversFromDatabase() {
   try {
     const response = await fetch('/api/drivers');
@@ -865,15 +928,27 @@ function handlePassengerClick(event) {
   }
 }
 
-function handleTableClick(event) {
+async function handleTableClick(event) {
   const button = event.target.closest('button[data-action]');
   if (!button) return;
 
-  const id = Number(button.getAttribute('data-id'));
+  const id = button.getAttribute('data-id');
   const action = button.getAttribute('data-action');
 
+  if (action === 'approve-status') {
+    try {
+      const response = await fetch(`/api/shedulle/${encodeURIComponent(id)}/status-approve`, { method: 'POST' });
+      const result = await readApiResponse(response);
+      if (!response.ok) throw new Error(result.message || 'Unable to approve status update.');
+      await loadSchedulesFromDatabase();
+    } catch (error) {
+      alert(error.message || 'Unable to approve status update.');
+    }
+    return;
+  }
+
   if (action === 'delete') {
-    state.schedules = state.schedules.filter((item) => item.id !== id);
+    state.schedules = state.schedules.filter((item) => String(item.id) !== String(id));
     saveState();
     render();
     return;
@@ -905,17 +980,32 @@ function handleTableClick(event) {
   }
 }
 
-function handleDriverStatusChange(event) {
+async function handleDriverStatusChange(event) {
   const select = event.target.closest('select[data-id]');
   if (!select) return;
 
-  const id = Number(select.getAttribute('data-id'));
+  const id = select.getAttribute('data-id');
   const schedule = getScheduleById(id);
   if (!schedule) return;
 
-  schedule.status = select.value;
-  saveState();
-  render();
+  try {
+    const response = await fetch(`/api/shedulle/${encodeURIComponent(id)}/status-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: select.value,
+        driver_username: state.currentUser.username
+      })
+    });
+    const result = await readApiResponse(response);
+    if (!response.ok) throw new Error(result.message || 'Unable to send status for approval.');
+    schedule.pendingStatus = result.shedulle.pending_status;
+    schedule.pendingStatusDriver = result.shedulle.pending_status_driver;
+    render();
+  } catch (error) {
+    alert(error.message || 'Unable to send status for admin approval.');
+    render();
+  }
 }
 
 function handleLogout() {
@@ -952,14 +1042,25 @@ function attachEvents() {
   const createDriverForm = document.getElementById('createDriverForm');
   if (createDriverForm) createDriverForm.addEventListener('submit', handleAdminCreateDriver);
   const driverAccountsList = document.getElementById('driverAccountsList');
-  if (driverAccountsList) driverAccountsList.addEventListener('click', (e) => {
+  if (driverAccountsList) driverAccountsList.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-action="delete-driver"]');
     if (!btn) return;
     const uname = btn.getAttribute('data-username');
     if (!uname || !confirm(`Remove driver account "${uname}"?`)) return;
-    state.users = state.users.filter((u) => u.username !== uname);
-    saveState();
-    renderAdminPanel();
+
+    try {
+      const response = await fetch(`/api/drivers/${encodeURIComponent(uname)}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || 'Unable to remove driver account.');
+      }
+
+      state.users = state.users.filter((user) => String(user.username || '').toLowerCase() !== uname.toLowerCase());
+      saveState();
+      await loadDriversFromDatabase();
+    } catch (error) {
+      alert(error.message || 'Unable to remove driver account from the database.');
+    }
   });
   if (createAccountBtn && registerPanel) createAccountBtn.addEventListener('click', () => {
     registerPanel.classList.toggle('hidden');
@@ -1013,7 +1114,8 @@ window.addEventListener('DOMContentLoaded', () => {
   attachEvents();
   closePriceModal();
   render();
-  if (document.getElementById('driverAccountsList')) {
+  loadSchedulesFromDatabase();
+  if (document.getElementById('driverAccountsList') || document.getElementById('driverName')) {
     loadDriversFromDatabase();
   }
 });

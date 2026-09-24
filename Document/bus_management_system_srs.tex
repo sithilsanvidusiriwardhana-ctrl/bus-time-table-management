@@ -1,0 +1,151 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{fontspec}
+\usepackage[english, bidi=basic, provide=*]{babel}
+\babelfont{rm}{Noto Sans}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\definecolor{primary}{RGB}{31, 78, 121}
+\definecolor{accent}{RGB}{41, 128, 185}
+\definecolor{darkgray}{RGB}{51, 51, 51}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primary,
+    filecolor=magenta,      
+    urlcolor=accent,
+}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\Huge \textbf{Software Requirements Specification}}\\[0.5cm]
+    {\Large \textbf{Smart Bus Management System (SBMS)}\\[2.0cm]}
+    
+    \vfill
+    
+    \textbf{Prepared for:} Public Transport Authorities \& Bus Operators\\
+    \textbf{Prepared by:} Development Team\\
+    \textbf{Date:} \today\\
+    \textbf{Version:} 1.0
+    \vspace*{1cm}
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Preface}
+\subsection{Document Purpose}
+This document lists the requirements for the Bus Management System (SBMS) project. The purpose of this document is to identify the system requirements and obtain sign-off on all requirements before moving to the design phase. The Development team will use this document as the basis for the system design and implementation architecture.
+
+\subsection{Revision History}
+\begin{table}[h]
+\centering
+\begin{tabular}{llll}
+\toprule
+\textbf{Revision} & \textbf{Author} & \textbf{Date} & \textbf{Description} \\ \midrule
+1.0 & Development Team & \today & Initial draft of Bus Management System SRS \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Introduction}
+\subsection{Problem Statement}
+Public transit management often suffers from fragmented tracking, unpredictable delays, lack of real-time passenger communication, and inefficient fleet resource scheduling. 
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{The Problem:} Commuters face immense uncertainty regarding real-time bus arrivals, leading to overcrowding and long wait times at stops. Meanwhile, operators lack centralized visibility over driver performance, fuel consumption, and maintenance schedules, resulting in high operational overhead.
+    \item \textbf{Goals and Objectives:} To build an automated, real-time Bus Management System that reduces passenger wait times by 30\%, optimizes fuel and fleet utilization, and provides transparent schedule adherence tracking.
+    \item \textbf{The Scope:} Includes GPS tracking modules, automated ticketing/fare collection, scheduling engine, passenger mobile application, and administrative dashboard. Excluded are third-party hardware manufacturing and city-wide traffic light signaling integration.
+    \item \textbf{The Impact:} Unresolved inefficiencies lead to decreased public transit usage, revenue leakage from manual fare collection, and inflated maintenance costs. Solving this enhances urban mobility and trust in public infrastructure.
+    \item \textbf{The Stakeholders:} Commuters, Bus Drivers, Fleet Managers, Dispatchers, and Municipal Transport Authorities.
+    \item \textbf{The Vision for a Solution:} A centralized cloud platform integrated with IoT GPS trackers and a user-friendly mobile application delivering seamless tracking, automated scheduling, and data-driven insights.
+\end{itemize}
+
+\subsection{Key Challenges and How to Solve Them}
+Implementing a modernized bus management network presents several technical and operational hurdles. Below are the core challenges identified and our systematic solutions:
+
+\begin{enumerate}[leftmargin=*, label=\arabic*.]
+    \item \textbf{Challenge 1: Inaccurate Real-Time ETA Calculations and Poor GPS Connectivity}
+    \begin{itemize}[leftmargin=*]
+        \item \textit{The Problem:} Urban canyons, tunnels, and network drops cause intermittent GPS signals, resulting in erratic estimated times of arrival (ETAs) and frustrated passengers.
+        \item \textit{The Solution:} Implement a predictive smoothing algorithm utilizing historical route data and Kalman filtering. Even when GPS signals drop temporarily, the system interpolates vehicle velocity and road network graphs to maintain smooth and reliable ETA updates.
+    \end{itemize}
+    
+    \item \textbf{Challenge 2: Sudden Fleet Breakdowns and Unscheduled Downtime}
+    \begin{itemize}[leftmargin=*]
+        \item \textit{The Problem:} Relying solely on reactive maintenance leads to mid-route breakdowns, causing major delays and passenger dissatisfaction.
+        \item \textit{The Solution:} Integrate an Internet of Things (IoT) telemetry monitoring framework that tracks engine health metrics, tire pressure, and mileage in real-time, triggering automated maintenance alerts before components fail.
+    \end{itemize}
+
+    \item \textbf{Challenge 3: High Concurrency During Peak Rush Hours}
+    \begin{itemize}[leftmargin=*]
+        \item \textit{The Problem:} Tens of thousands of users concurrently requesting bus tracking data during morning and evening rush hours can cause server bottlenecks and app crashes.
+        \item \textit{The Solution:} Deploy a cloud-native microservices architecture utilizing container orchestration (Kubernetes) and distributed caching (Redis) to dynamically scale resources based on incoming traffic spikes.
+    \end{itemize}
+\end{enumerate}
+
+\section{User Requirement Definition}
+The system provides multi-tier services tailored to different user roles:
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Commuters:} Real-time bus tracking, digital ticketing, trip planning, and push notifications for delays.
+    \item \textbf{Drivers:} Turn-by-turn route navigation, passenger count reporting, and emergency dispatch alerts.
+    \item \textbf{Administrators:} Fleet tracking map view, driver roster scheduling, fare auditing, and analytics reports.
+\end{itemize}
+
+\subsection{Use Cases of the System}
+System interactions are modeled through standard UML use cases covering commuter tracking, fare validation, and dispatcher emergency overrides.
+
+\section{System Requirements Definition}
+\subsection{Functional Requirements}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{FR-01 (Real-Time Tracking):} The system shall ingest GPS telemetry from bus-mounted units every 5 seconds and display vehicle locations on the management map.
+    \item \textbf{FR-02 (Ticketing):} The system shall process digital NFC and QR-code ticket purchases securely via integrated payment gateways.
+    \item \textbf{FR-03 (Schedule Management):} Dispatchers shall be able to modify, add, or cancel route timetables dynamically.
+\end{itemize}
+
+\subsection{Use Case Description Example}
+\begin{table}[h]
+\centering
+\begin{tabular}{lp{10cm}}
+\toprule
+\textbf{Field} & \textbf{Description} \\ \midrule
+\textbf{Use Case ID \& Name} & UC-01: Track Bus Location \\
+\textbf{Scope} & Passenger Mobile App \& GPS Module \\
+\textbf{Primary Actor} & Commuter \\
+\textbf{Preconditions} & User has active internet connection and app installed. \\
+\textbf{Trigger} & User selects a specific bus route or stop. \\
+\textbf{Main Flow} & 1. User opens app and selects route. 2. System queries live telemetry database. 3. System renders current bus coordinates and updated ETA on map. \\
+\textbf{Postconditions} & User views up-to-date position of the incoming bus. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Non-Functional Requirements}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Performance Requirements:} Map render times must be under 1.5 seconds; API response times for tracking queries must not exceed 500ms.
+    \item \textbf{Security Requirements:} All user communications must be encrypted using TLS 1.3. Payment card data must comply with PCI-DSS standards.
+    \item \textbf{Reliability and Availability:} The system shall maintain 99.9\% uptime availability annually.
+    \item \textbf{Scalability:} The platform must support up to 50,000 concurrent active users and 1,000 concurrent tracking buses without performance degradation.
+\end{itemize}
+
+\subsection{Data Requirements}
+The system will handle relational data including user profiles, schedule timetables, payment transactions, and historical telemetry logs stored via a secure, normalized PostgreSQL database cluster.
+
+\subsection{User Characteristics}
+Users range from everyday public commuters with basic smartphone literacy to transport administrators requiring advanced dashboard analytics. Role-based access control (RBAC) ensures users only access permitted system functions.
+
+\subsection{Testing Requirements}
+Testing strategies include automated unit testing for backend APIs, load testing using JMeter to simulate peak rush hours, and field integration testing with physical GPS hardware installed on sample buses.
+
+\subsection{Documentation Requirements}
+Required documentation includes an end-user mobile application manual, system administrator deployment guidelines, and developer API specifications.
+
+\end{document}
