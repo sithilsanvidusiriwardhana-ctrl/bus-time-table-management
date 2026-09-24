@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ "dev" ] # හෝ ඔබේ ප්‍රධාන branch එකේ නම
+    branches: [ "developer" ] # හෝ ඔබේ ප්‍රධාන branch එකේ නම
 
 jobs:
   build:
