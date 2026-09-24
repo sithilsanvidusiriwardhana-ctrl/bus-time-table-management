@@ -1,9 +1,4 @@
 name: Deploy to GitHub Pages
-uses: JamesIves/github-pages-deploy-action@v4
-  with:
-    folder:foundend  
-       branch: gh-pages
-       clean: true
 on:
   push:
     branches: [ "developer" ] # ඔබට deploy කිරීමට අවශ්‍ය branch එකේ නම මෙතက်ට දෙන්න (උදා: dev හෝ main)
@@ -23,5 +18,7 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: foundend  # මෙතැනට ඔබේ index.html ගොනුව ඇති ෆෝල්ඩරයේ නම දෙන්න (උදා: frontend)
+          folder: foundend 
+          branch: developer
+          clear : true
 
