@@ -8,6 +8,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Clean Deploy to GitHub Pages
+
       - name: Checkout
         uses: actions/checkout@v4
 
