@@ -19,5 +19,5 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: frontend  # මෙතැනට ඔබේ index.html ගොනුව ඇති ෆෝල්ඩරයේ නම දෙන්න (උදා: frontend)
+          folder: foundend  # මෙතැනට ඔබේ index.html ගොනුව ඇති ෆෝල්ඩරයේ නම දෙන්න (උදා: frontend)
           branch: gh-pages
