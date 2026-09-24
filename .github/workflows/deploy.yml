@@ -21,3 +21,9 @@ jobs:
         with:
           folder: foundend  # මෙතැනට ඔබේ index.html ගොනුව ඇති ෆෝල්ඩරයේ නම දෙන්න (උදා: frontend)
           branch: gh-pages
+- name: Deploy to GitHub Pages
+  uses: JamesIves/github-pages-deploy-action@v4
+  with:
+    folder: ඔබේ_ෆෝල්ඩරයේ_නම
+    branch: gh-pages
+    clean: true
