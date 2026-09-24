@@ -1,24 +1,35 @@
 name: Deploy to GitHub Pages
+
 on:
   push:
-    branches: [ "developer" ] # ඔබට deploy කිරීමට අවශ්‍ය branch එකේ නම මෙතက်ට දෙන්න (උදා: dev හෝ main)
+    branches: [ "dev" ] # හෝ ඔබේ ප්‍රධාන branch එකේ නම
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install and Build (optional)
-        # ඔබ React/Vite වැනි framework එකක් නම් මෙතැන build commands දිය හැක. 
-        # සාමාන්‍ය HTML/CSS නම් මෙය අවශ්‍ය නොවේ.
-        run: echo "No build step required for static HTML"
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          folder: foundend 
-          branch: gh-pages
-          clear : true
+          path: 'foundend'
+
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
