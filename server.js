@@ -12,14 +12,20 @@ const currentDirectory = process.cwd();
 
 const app = express();
 const port = process.env.PORT || 8000;
+const getRouter = (routeModule) => routeModule?.default || routeModule;
+
+const passengerRouter = getRouter(passengerRoutes);
+const driverRouter = getRouter(driverRoutes);
+const shedulleRouter = getRouter(shedulleRoutes);
+const userRouter = getRouter(userRoutes);
 
 app.use(express.json());
 app.use(express.static(path.join(currentDirectory, 'foundend')));
 
-app.use('/api/passengers', passengerRoutes);
-app.use('/api/drivers', driverRoutes);
-app.use('/api/shedulle', shedulleRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api/passengers', passengerRouter);
+app.use('/api/drivers', driverRouter);
+app.use('/api/shedulle', shedulleRouter);
+app.use('/api/users', userRouter);
 
 // Construct URI safely from environment variables
 const username = process.env.DB_USERNAME;
