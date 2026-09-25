@@ -2,15 +2,13 @@ import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import passengerRoutes from './backend/routes/passenger.route.js';
 import driverRoutes from './backend/routes/driver.routes.js';  
 import shedulleRoutes from './backend/routes/shedulle.routes.js';  
 import userRoutes from './backend/routes/user.routes.js';
 dotenv.config();
 
-const currentFilePath = fileURLToPath(import.meta.url);
-const currentDirectory = path.dirname(currentFilePath);
+const currentDirectory = process.cwd();
 
 const app = express();
 const port = process.env.PORT || 8000;
