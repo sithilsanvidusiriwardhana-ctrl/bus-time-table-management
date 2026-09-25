@@ -9,14 +9,14 @@ import shedulleRoutes from './backend/routes/shedulle.routes.js';
 import userRoutes from './backend/routes/user.routes.js';
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDirectory = path.dirname(currentFilePath);
 
 const app = express();
 const port = process.env.PORT || 8000;
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'foundend')));
+app.use(express.static(path.join(currentDirectory, 'foundend')));
 
 app.use('/api/passengers', passengerRoutes);
 app.use('/api/drivers', driverRoutes);
