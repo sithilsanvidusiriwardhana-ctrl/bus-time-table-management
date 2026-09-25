@@ -586,9 +586,18 @@ async function handleLogin(event) {
     }
 
     const verifiedUser = result.user; // Contains the role fetched from DB
+    const normalizedUser = {
+      ...verifiedUser,
+      role: normalizeRole(verifiedUser?.role),
+      name: verifiedUser.displayName || verifiedUser.username
+    };
 
-    if (verifiedUser.role === 'Passenger') {
-      state.currentUser = { ...verifiedUser, name: verifiedUser.displayName || verifiedUser.username };
+    if (normalizedUser.role === 'Passenger') {
+      state.currentUser = normalizedUser;
+      state.users = [
+        ...getUsers().filter((user) => user.username.toLowerCase() !== normalizedUser.username.toLowerCase()),
+        normalizedUser
+      ];
       clearLoginError();
       saveState();
       render();
@@ -597,7 +606,7 @@ async function handleLogin(event) {
 
     // For Admin or Driver, handle OTP / dashboard redirect based on DB role
     const otp = otpUtils.generateOtp(6);
-    const pendingUser = { ...verifiedUser, name: verifiedUser.displayName || verifiedUser.username };
+    const pendingUser = normalizedUser;
     sessionStorage.setItem('pendingOtp', otp);
     sessionStorage.setItem('pendingUser', JSON.stringify(pendingUser));
     sessionStorage.setItem('pendingAction', 'login');
