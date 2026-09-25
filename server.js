@@ -18,6 +18,11 @@ const port = process.env.PORT || 8000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'foundend')));
 
+app.use('/api/passengers', passengerRoutes);
+app.use('/api/drivers', driverRoutes);
+app.use('/api/shedulle', shedulleRoutes);
+app.use('/api/users', userRoutes);
+
 // Construct URI safely from environment variables
 const username = process.env.DB_USERNAME;
 const password = process.env.DB_PASSWORD;
@@ -29,30 +34,31 @@ const uri = process.env.DBURL || process.env.MONGODB_URI || (
     : undefined
 );
 
-// Connect using Mongoose and wait for connection before starting the server
-async function startServer() {
-  try {
-    if (!uri) {
-      throw new Error("Database URI is undefined. Check your .env file!");
-    }
+let databaseConnection;
 
-    await mongoose.connect(uri);
-    console.log("Successfully connected to MongoDB Cluster0 with Mongoose!");
-
-    // Mount your passenger routes after a successful database connection
-    app.use('/api/passengers', passengerRoutes);
-    app.use('/api/drivers', driverRoutes);
-    app.use('/api/shedulle', shedulleRoutes);
-    app.use('/api/users', userRoutes);
-
-    app.listen(port, () => {
-      console.log(`Express server is running on http://localhost:${port}`);
-    });
-    
-  } catch (err) {
-    console.error("MongoDB connection error:", err.message);
-    process.exit(1);
+export async function connectDatabase() {
+  if (mongoose.connection.readyState === 1) {
+    return;
   }
+  if (!uri) {
+    throw new Error('Database URI is undefined. Configure MONGODB_URI or DBURL.');
+  }
+  databaseConnection ??= mongoose.connect(uri);
+  await databaseConnection;
+  console.log('Successfully connected to MongoDB with Mongoose.');
 }
 
-startServer();
+export { app };
+
+if (!process.env.NETLIFY && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  connectDatabase()
+    .then(() => {
+      app.listen(port, '0.0.0.0', () => {
+        console.log(`Express server is running on http://localhost:${port}`);
+      });
+    })
+    .catch((error) => {
+      console.error('MongoDB connection error:', error.message);
+      process.exit(1);
+    });
+}

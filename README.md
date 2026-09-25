@@ -1,15 +1,32 @@
 # Bus Time Table Management
 
-## MongoDB and Flutter API
+## MongoDB, Netlify Functions, and Flutter API
 
-The Flutter app reads and writes data through the Node API; it must not connect directly to MongoDB. Copy `.env.example` to `.env`, replace the MongoDB username, password, and Atlas connection string, then start the API from the project root:
+The repository is arranged as one Netlify site with a static frontend and an Express API function:
+
+```text
+foundend/                 static website
+netlify/functions/api.js  Netlify Function entry point
+backend/                  API routes, controllers, and MongoDB models
+server.js                 shared Express app and local development entry point
+```
+
+The Flutter app reads and writes data through the API; it must not connect directly to MongoDB. Copy `.env.example` to `.env`, replace the MongoDB connection string, then start the API locally:
 
 ```bash
 npm install
 npm start
 ```
 
-The Flutter API URL is configured at the top of `flutter_app/lib/main.dart` in `baseUrl`. For a local API, use `http://10.0.2.2:8000/api` on the Android emulator, `http://localhost:8000/api` on desktop, or your computer's LAN address on a physical phone.
+For Netlify, configure `MONGODB_URI` in **Site configuration > Environment variables**. Do not upload `.env` or put MongoDB credentials in Flutter. Netlify automatically publishes `foundend` and deploys `netlify/functions/api.js` according to `netlify.toml`.
+
+The Flutter API URL is configured at the top of `flutter_app/lib/main.dart` through `API_BASE_URL`. For the deployed app, build with your Netlify site URL:
+
+```bash
+flutter run --dart-define=API_BASE_URL=https://YOUR-SITE.netlify.app/api
+```
+
+For local development, use `http://10.0.2.2:8000/api` on the Android emulator, `http://localhost:8000/api` on desktop, or your computer's LAN address on a physical phone.
 
 The API endpoints used by Flutter are:
 
