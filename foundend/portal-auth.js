@@ -32,12 +32,12 @@ function savePortalState(state) {
 }
 
 function getRolePage(role) {
-  switch (role) {
-    case 'Admin':
+  switch (String(role || '').trim().toLowerCase()) {
+    case 'admin':
       return 'admin.html';
-    case 'Driver':
+    case 'driver':
       return 'driver.html';
-    case 'Passenger':
+    case 'passenger':
       return 'passenger.html';
     default:
       return 'index.html';
@@ -45,10 +45,11 @@ function getRolePage(role) {
 }
 
 function isAllowedRolePage(role, page) {
-  if (role === 'Admin') {
+  const normalizedRole = String(role || '').trim().toLowerCase();
+  if (normalizedRole === 'admin') {
     return ['admin.html', 'admin-drivers.html', 'admin-schedules.html'].includes(page);
   }
-  return page === getRolePage(role);
+  return page === getRolePage(normalizedRole);
 }
 
 function setPortalMessage(message, isError = false) {

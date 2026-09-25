@@ -52,6 +52,9 @@ const defaultState = {
 };
 
 let state = loadState();
+if (state.currentUser) {
+  state.currentUser.role = normalizeRole(state.currentUser.role);
+}
 state.databaseDrivers = null;
 let editingScheduleId = null;
 
@@ -216,8 +219,17 @@ function renderOtpSection() {
   }
 }
 
+function normalizeRole(role) {
+  const roleName = String(role || '').trim().toLowerCase();
+  return {
+    admin: 'Admin',
+    driver: 'Driver',
+    passenger: 'Passenger'
+  }[roleName] || role;
+}
+
 function getRolePage(role) {
-  switch (role) {
+  switch (normalizeRole(role)) {
     case 'Admin':
       return 'admin.html';
     case 'Driver':
@@ -230,10 +242,11 @@ function getRolePage(role) {
 }
 
 function isAllowedRolePage(role, page) {
-  if (role === 'Admin') {
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === 'Admin') {
     return ['admin.html', 'admin-drivers.html', 'admin-schedules.html'].includes(page);
   }
-  return page === getRolePage(role);
+  return page === getRolePage(normalizedRole);
 }
 
 function redirectToRolePage() {

@@ -102,9 +102,10 @@
 
           showStatus('Verification successful. Redirecting to your dashboard...', false);
           setTimeout(() => {
-            const rolePage = user.role === 'Driver'
+            const normalizedRole = String(user.role || '').trim().toLowerCase();
+            const rolePage = normalizedRole === 'driver'
               ? 'driver.html'
-              : user.role === 'Admin'
+              : normalizedRole === 'admin'
                 ? 'admin.html'
                 : 'passenger.html';
             window.location.replace(rolePage);
