@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'bus-time-table-management-state';
 const defaultState = {
   currentUser: null,
-  users: verifiedUsers.map((user) => ({ ...user })),
+  users: [],
   pendingOtp: null,
   pendingUser: null,
   pendingAction: null,

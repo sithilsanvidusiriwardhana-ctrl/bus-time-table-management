@@ -114,7 +114,6 @@ class _TableHomeState extends State<TableHome> {
   final route = TextEditingController();
   final routeNumber = TextEditingController();
   final bus = TextEditingController();
-  final scheduleDriver = TextEditingController();
   final departure = TextEditingController();
   final arrival = TextEditingController();
   final driverName = TextEditingController();
@@ -122,7 +121,10 @@ class _TableHomeState extends State<TableHome> {
   final driverPassword = TextEditingController();
 
   String statusFilter = 'All';
+  String adminSection = 'schedules';
+  String? selectedScheduleDriver;
   bool loading = true;
+  bool refreshing = false;
   final statuses = const ['On Time', 'Delayed', 'Departed'];
 
   @override
@@ -131,13 +133,20 @@ class _TableHomeState extends State<TableHome> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool refresh = false}) async {
+    if (refresh && mounted) setState(() => refreshing = true);
     try {
-      final scheduleResponse = await http.get(Uri.parse('$baseUrl/shedulle'));
-      final driverResponse = await http.get(Uri.parse('$baseUrl/drivers'));
-      if (scheduleResponse.statusCode != 200 ||
-          driverResponse.statusCode != 200) {
-        throw Exception('Unable to load data from the server.');
+      final scheduleResponse = await _getWithRetry(
+        Uri.parse('$baseUrl/shedulle'),
+      );
+      if (scheduleResponse.statusCode != 200) {
+        throw Exception(_apiError(scheduleResponse, 'Could not load schedules'));
+      }
+      final driverResponse = await _getWithRetry(
+        Uri.parse('$baseUrl/drivers'),
+      );
+      if (driverResponse.statusCode != 200) {
+        throw Exception(_apiError(driverResponse, 'Could not load drivers'));
       }
       final scheduleData =
           jsonDecode(scheduleResponse.body) as Map<String, dynamic>;
@@ -151,10 +160,30 @@ class _TableHomeState extends State<TableHome> {
         return User(data['username'] ?? '', '', 'Driver', data['name'] ?? '');
       }).toList();
     } catch (error) {
-      _message('Could not load MongoDB data: $error');
+      _message('Could not load bus data. Check your connection and retry: $error');
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() {
+          loading = false;
+          refreshing = false;
+        });
+      }
     }
+  }
+
+  Future<http.Response> _getWithRetry(Uri uri) async {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      final client = http.Client();
+      try {
+        return await client.get(uri).timeout(const Duration(seconds: 15));
+      } catch (_) {
+        if (attempt == 2) rethrow;
+      } finally {
+        client.close();
+      }
+      await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+    }
+    throw StateError('Request retry limit reached.');
   }
 
   void _message(String msg) =>
@@ -196,6 +225,7 @@ class _TableHomeState extends State<TableHome> {
         () =>
             currentUser = User(data['username'], '', role, data['displayName']),
       );
+      await _load(refresh: true);
     } catch (error) {
       _message('Login failed: $error');
     }
@@ -351,6 +381,16 @@ class _TableHomeState extends State<TableHome> {
         style: TextStyle(fontWeight: FontWeight.w800),
       ),
       actions: [
+        IconButton(
+          onPressed: refreshing ? null : () => _load(refresh: true),
+          tooltip: 'Refresh data',
+          icon: refreshing
+              ? const SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.refresh),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Chip(label: Text(currentUser!.role)),
@@ -394,17 +434,61 @@ class _TableHomeState extends State<TableHome> {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       _statsRow(),
-      const SizedBox(height: 20),
-      _sectionTitle('Add Schedule'),
-      _scheduleForm(),
-      const SizedBox(height: 24),
-      _sectionTitle('All Schedules'),
-      ...schedules.asMap().entries.map(
-        (entry) => _scheduleTile(entry.value, entry.key, canDelete: true),
+      const SizedBox(height: 16),
+      SegmentedButton<String>(
+        segments: const [
+          ButtonSegment(
+            value: 'schedules',
+            label: Text('Schedules'),
+            icon: Icon(Icons.directions_bus_outlined),
+          ),
+          ButtonSegment(
+            value: 'drivers',
+            label: Text('Drivers'),
+            icon: Icon(Icons.groups_outlined),
+          ),
+        ],
+        selected: {adminSection},
+        onSelectionChanged: (selection) =>
+            setState(() => adminSection = selection.first),
       ),
       const SizedBox(height: 20),
-      _sectionTitle('Create Driver Account'),
+      if (adminSection == 'schedules') _adminSchedulesSection(),
+      if (adminSection == 'drivers') _adminDriversSection(),
+    ],
+  );
+
+  Widget _adminSchedulesSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _sectionTitle('Add Bus Schedule'),
+      _scheduleForm(),
+      const SizedBox(height: 24),
+      _sectionTitle('All Schedules (${schedules.length})'),
+      _scheduleTables(schedules, canDelete: true),
+    ],
+  );
+
+  Widget _adminDriversSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _sectionTitle('Register Driver'),
       _driverForm(),
+      const SizedBox(height: 24),
+      _sectionTitle('All Drivers (${drivers.length})'),
+      if (drivers.isEmpty)
+        const Text('No drivers have been registered yet.')
+      else
+        ...drivers.map(
+          (driver) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+              title: Text(driver.name),
+              subtitle: Text('@${driver.username}'),
+            ),
+          ),
+        ),
     ],
   );
 
@@ -447,7 +531,27 @@ class _TableHomeState extends State<TableHome> {
       _field('Route', 'Central - Airport', controller: route),
       _field('Route No.', '12A', controller: routeNumber),
       _field('Bus No.', 'B-401', controller: bus),
-      _field('Driver', 'John', controller: scheduleDriver),
+      SizedBox(
+        width: 240,
+        child: DropdownButtonFormField<String>(
+          initialValue: selectedScheduleDriver,
+          decoration: InputDecoration(
+            labelText: 'Registered driver',
+            helperText: drivers.isEmpty ? 'Register a driver first' : null,
+          ),
+          items: drivers
+              .map(
+                (driver) => DropdownMenuItem(
+                  value: driver.username,
+                  child: Text('${driver.name} (@${driver.username})'),
+                ),
+              )
+              .toList(),
+          onChanged: drivers.isEmpty
+              ? null
+              : (username) => setState(() => selectedScheduleDriver = username),
+        ),
+      ),
       _field('Departure', '08:00', controller: departure),
       _field('Arrival', '09:00', controller: arrival),
       FilledButton.icon(
@@ -475,7 +579,7 @@ class _TableHomeState extends State<TableHome> {
       'route_name': route.text.trim(),
       'route_number': routeNumber.text.trim(),
       'bus_number': bus.text.trim(),
-      'assign_driver': scheduleDriver.text.trim(),
+      'assign_driver': selectedScheduleDriver ?? '',
       'departure_time': departure.text.trim(),
       'arrival_time': arrival.text.trim(),
       'status': 'On Time',
@@ -504,12 +608,12 @@ class _TableHomeState extends State<TableHome> {
         route,
         routeNumber,
         bus,
-        scheduleDriver,
         departure,
         arrival,
       ]) {
         controller.clear();
       }
+      setState(() => selectedScheduleDriver = null);
       _message('Schedule added.');
     } catch (error) {
       _message('Could not add schedule: $error');
@@ -576,9 +680,7 @@ class _TableHomeState extends State<TableHome> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle('Your Schedule Board'),
-        ...mySchedules.map(
-          (s) => _scheduleTile(s, schedules.indexOf(s), canDelete: false),
-        ),
+        _scheduleTables(mySchedules.toList()),
       ],
     );
   }
@@ -625,9 +727,7 @@ class _TableHomeState extends State<TableHome> {
           ],
         ),
         const SizedBox(height: 16),
-        ...filtered.map(
-          (s) => _scheduleTile(s, schedules.indexOf(s), canDelete: false),
-        ),
+        _scheduleTables(filtered),
       ],
     );
   }
@@ -644,60 +744,184 @@ class _TableHomeState extends State<TableHome> {
     ),
   );
 
-  Widget _scheduleTile(
-    Schedule item,
-    int index, {
-    required bool canDelete,
-  }) => Card(
-    margin: const EdgeInsets.only(bottom: 10),
-    child: ListTile(
-      isThreeLine: true,
-      leading: CircleAvatar(
-        backgroundColor: const Color(0xffdceaf7),
-        child: Text(
-          item.routeNumber,
-          style: const TextStyle(fontSize: 11, color: Color(0xff155ea8)),
-        ),
+  Widget _scheduleTables(List<Schedule> items, {bool canDelete = false}) {
+    if (items.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Text('No schedules available.'),
+      );
+    }
+
+    final groups = <String, List<Schedule>>{};
+    for (final item in items) {
+      final key = '${item.routeNumber.trim()}\u0000${item.route.trim()}';
+      groups.putIfAbsent(key, () => []).add(item);
+    }
+    final routes = groups.values.toList()
+      ..sort((first, second) {
+        final numberOrder = first.first.routeNumber.compareTo(
+          second.first.routeNumber,
+        );
+        return numberOrder != 0
+            ? numberOrder
+            : first.first.route.compareTo(second.first.route);
+      });
+
+    return Column(
+      children: routes.map((routeSchedules) {
+        final route = routeSchedules.first;
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+                child: Text(
+                  'Route ${route.routeNumber}',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: const Color(0xff1769aa),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  route.route,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+                child: DataTable(
+                  headingRowHeight: 44,
+                  dataRowMinHeight: 54,
+                  dataRowMaxHeight: 64,
+                  columnSpacing: 24,
+                  columns: [
+                    const DataColumn(label: Text('Route')),
+                    const DataColumn(label: Text('Bus')),
+                    const DataColumn(label: Text('Driver')),
+                    const DataColumn(label: Text('Departure')),
+                    const DataColumn(label: Text('Arrival')),
+                    const DataColumn(label: Text('Status')),
+                    const DataColumn(label: Text('Fare'), numeric: true),
+                    if (canDelete || currentUser!.role != 'Passenger')
+                      const DataColumn(label: Text('Actions')),
+                  ],
+                  rows: routeSchedules.map((item) {
+                    return DataRow(
+                      cells: [
+                        DataCell(
+                          Text('${item.routeNumber} • ${item.route}'),
+                        ),
+                        DataCell(Text(item.bus)),
+                        DataCell(Text(_assignedDriverLabel(item.driver))),
+                        DataCell(Text(item.departure)),
+                        DataCell(Text(item.arrival)),
+                        DataCell(_statusBadge(item.status)),
+                        DataCell(Text(_formatFare(item.price))),
+                        if (canDelete || currentUser!.role != 'Passenger')
+                          DataCell(
+                            Wrap(
+                              spacing: 0,
+                              children: [
+                                if (currentUser!.role == 'Driver')
+                                  PopupMenuButton<String>(
+                                    tooltip: 'Update trip status',
+                                    enabled: item.pendingStatus == null,
+                                    onSelected: (status) =>
+                                        _requestStatus(item, status),
+                                    itemBuilder: (_) => statuses
+                                        .map(
+                                          (status) => PopupMenuItem(
+                                            value: status,
+                                            child: Text(status),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                if (currentUser!.role == 'Admin' &&
+                                    item.pendingStatus != null)
+                                  IconButton(
+                                    tooltip:
+                                        'Approve ${item.pendingStatus} status',
+                                    onPressed: () => _approveStatus(item),
+                                    icon: const Icon(
+                                      Icons.check_circle_outline,
+                                    ),
+                                  ),
+                                if (canDelete)
+                                  IconButton(
+                                    tooltip: 'Delete schedule',
+                                    onPressed: item.id == null
+                                        ? null
+                                        : () => _deleteSchedule(item),
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _statusBadge(String status) {
+    final colors = switch (status.toLowerCase()) {
+      'on time' => (background: const Color(0xffe8f5e9), foreground: const Color(0xff2e7d32)),
+      'delayed' => (background: const Color(0xfffff4df), foreground: const Color(0xffa86400)),
+      'departed' => (background: const Color(0xffedf2ff), foreground: const Color(0xff3949ab)),
+      _ => (background: const Color(0xffeef2f6), foreground: const Color(0xff455a64)),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(16),
       ),
-      title: Text(
-        item.route,
-        style: const TextStyle(fontWeight: FontWeight.bold),
+      child: Text(
+        status,
+        style: TextStyle(color: colors.foreground, fontSize: 12),
       ),
-      subtitle: Text(
-        '${item.bus} · ${item.driver}\n'
-        '${item.departure}–${item.arrival}  ${item.type}  LKR ${item.price}'
-        '${item.pendingStatus == null ? '' : '\nPending approval: ${item.pendingStatus}'}',
-      ),
-      trailing: Wrap(
-        spacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Chip(label: Text(item.status)),
-          if (currentUser!.role == 'Driver')
-            PopupMenuButton<String>(
-              enabled: item.pendingStatus == null,
-              onSelected: (v) {
-                _requestStatus(item, v);
-              },
-              itemBuilder: (_) => statuses
-                  .map((v) => PopupMenuItem(value: v, child: Text(v)))
-                  .toList(),
-            ),
-          if (currentUser!.role == 'Admin' && item.pendingStatus != null)
-            IconButton(
-              onPressed: () => _approveStatus(item),
-              tooltip: 'Approve ${item.pendingStatus} status',
-              icon: const Icon(Icons.check_circle_outline),
-            ),
-          if (canDelete)
-            IconButton(
-              onPressed: item.id == null ? null : () => _deleteSchedule(item),
-              icon: const Icon(Icons.delete_outline),
-            ),
-        ],
-      ),
-    ),
-  );
+    );
+  }
+
+  String _formatFare(int fare) {
+    final digits = fare.toString();
+    final formatted = StringBuffer();
+    for (var index = 0; index < digits.length; index++) {
+      if (index > 0 && (digits.length - index) % 3 == 0) {
+        formatted.write(',');
+      }
+      formatted.write(digits[index]);
+    }
+    return formatted.toString();
+  }
+
+  String _assignedDriverLabel(String assignedDriver) {
+    final normalized = assignedDriver.trim().toLowerCase();
+    for (final driver in drivers) {
+      if (driver.username.trim().toLowerCase() == normalized ||
+          driver.name.trim().toLowerCase() == normalized) {
+        return '${driver.name} (@${driver.username})';
+      }
+    }
+    return assignedDriver;
+  }
 
   Future<void> _requestStatus(Schedule item, String status) async {
     if (item.id == null) return;
