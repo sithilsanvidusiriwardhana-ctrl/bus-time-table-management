@@ -65,6 +65,45 @@ body {
   align-items: start;
 }
 
+.admin-layout {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.admin-side-nav {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.admin-side-nav h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-side-nav a {
+  display: block;
+  padding: 0.65rem 0.75rem;
+  border-radius: 9px;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.admin-side-nav a:hover,
+.admin-side-nav a.active {
+  color: white;
+  background: var(--admin);
+}
+
 .hero-panel {
   background: linear-gradient(130deg, #0f172a, #2563eb);
   color: white;
@@ -408,6 +447,24 @@ select {
 
 .dashboard-shell {
   grid-column: 1 / -1;
+}
+
+.admin-layout > .dashboard-shell {
+  grid-column: 2;
+}
+
+@media (max-width: 700px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-layout > .dashboard-shell {
+    grid-column: 1;
+  }
+
+  .admin-side-nav {
+    position: static;
+  }
 }
 
 .dashboard-actions {

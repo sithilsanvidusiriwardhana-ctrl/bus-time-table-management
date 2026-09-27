@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Driver Management | Bus Time Table</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-body">
+    <div class="page-shell">
+      <nav class="page-nav" aria-label="Portal navigation">
+        <a href="index.html">Home</a>
+        <a href="passenger.html">Passenger</a>
+        <a href="driver.html">Driver</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+
+      <main class="page-main admin-layout">
+        <aside class="admin-side-nav" aria-label="Admin management">
+          <h3>Admin tools</h3>
+          <a href="admin-schedules.html">Schedule management</a>
+          <a href="admin-drivers.html" class="active">Driver management</a>
+        </aside>
+
+        <section id="dashboardSection" class="dashboard-shell">
+          <div class="dashboard-header">
+            <div>
+              <p class="eyebrow">Admin workspace</p>
+              <h2 id="dashboardTitle">Driver management</h2>
+            </div>
+            <div class="dashboard-actions">
+              <span id="userRoleBadge" class="role-badge">Admin</span>
+              <button id="logoutBtn" class="btn btn-secondary" type="button">Logout</button>
+            </div>
+          </div>
+
+          <div id="welcomeCard" class="welcome-card"></div>
+
+          <div id="adminPanel" class="panel">
+            <div class="panel-heading">
+              <h3>Manage drivers</h3>
+              <p>Create and remove driver accounts stored in the database.</p>
+            </div>
+
+            <form id="createDriverForm" class="schedule-form">
+              <div class="field-group"><label for="driverFullName">Full name</label><input id="driverFullName" name="driverFullName" type="text" placeholder="Enter full name" required /></div>
+              <div class="field-group"><label for="driverUsername">Username</label><input id="driverUsername" name="driverUsername" type="text" placeholder="Choose username" required /></div>
+              <div class="field-group"><label for="driverPassword">Password</label><input id="driverPassword" name="driverPassword" type="password" placeholder="Choose password" required /></div>
+              <button id="createDriverBtn" class="btn btn-primary" type="submit">Create driver account</button>
+            </form>
+            <p id="createDriverMessage" class="form-success" role="status"></p>
+
+            <div class="panel-heading" style="margin-top:1.5rem;"><h3>Registered drivers</h3></div>
+            <div id="driverAccountsList"></div>
+          </div>
+          <div id="driverPanel" class="panel hidden"></div>
+          <div id="passengerPanel" class="panel hidden"></div>
+        </section>
+      </main>
+    </div>
+    <script src="otp-utils.js"></script>
+    <script src="app.js"></script>
+    <script src="portal-auth.js"></script>
+  </body>
+</html>
