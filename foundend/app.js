@@ -1,10 +1,4 @@
 const STORAGE_KEY = 'bus-time-table-management-state';
-const verifiedUsers = [
-  { username: 'admin', password: 'admin123', role: 'Admin', displayName: 'Administrator' },
-  { username: 'driver', password: 'driver123', role: 'Driver', displayName: 'Bus Driver' },
-  { username: 'passenger', password: 'passenger123', role: 'Passenger', displayName: 'Passenger' }
-];
-
 const defaultState = {
   currentUser: null,
   users: verifiedUsers.map((user) => ({ ...user })),

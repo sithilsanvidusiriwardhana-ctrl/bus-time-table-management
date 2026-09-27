@@ -1,11 +1,10 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 const String baseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://localhost:8000/api',
+  defaultValue: 'https://busmanagments.netlify.app/api',
 );
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,9 +25,12 @@ class Schedule {
     required this.status,
     required this.type,
     required this.price,
+    this.pendingStatus,
+    this.pendingStatusDriver,
   });
 
   String? id;
+  String? pendingStatus, pendingStatusDriver;
   String route, routeNumber, bus, driver, departure, arrival, status, type;
   int price;
 
@@ -54,6 +56,8 @@ class Schedule {
     departure: json['departure'] ?? json['departure_time'] ?? '',
     arrival: json['arrival'] ?? json['arrival_time'] ?? '',
     status: json['status'] ?? 'On Time',
+    pendingStatus: json['pending_status']?.toString(),
+    pendingStatusDriver: json['pending_status_driver']?.toString(),
     type: json['type'] ?? json['bus_type'] ?? 'Normal',
     price: json['price'] ?? 0,
   );
@@ -74,8 +78,8 @@ class BusTableApp extends StatelessWidget {
     debugShowCheckedModeBanner: false,
     title: 'Bus Time Table',
     theme: ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xffe85d3f)),
-      scaffoldBackgroundColor: const Color(0xfff8f5ef),
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff1769aa)),
+      scaffoldBackgroundColor: const Color(0xfff4f8fc),
       useMaterial3: true,
       inputDecorationTheme: const InputDecorationTheme(
         border: OutlineInputBorder(),
@@ -188,77 +192,13 @@ class _TableHomeState extends State<TableHome> {
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final data = decoded['user'] as Map<String, dynamic>;
       final role = data['role'] as String? ?? 'Passenger';
-      if ((role == 'Admin' || role == 'Driver') && !await _verifyOtp()) {
-        return;
-      }
       setState(
-        () => currentUser = User(
-          data['username'],
-          '',
-          role,
-          data['displayName'],
-        ),
+        () =>
+            currentUser = User(data['username'], '', role, data['displayName']),
       );
     } catch (error) {
       _message('Login failed: $error');
     }
-  }
-
-  String _generateOtp() =>
-      (100000 + Random().nextInt(900000)).toString();
-
-  Future<bool> _verifyOtp() async {
-    var otp = _generateOtp();
-    final otpController = TextEditingController();
-    var errorMessage = '';
-
-    final verified = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Verify OTP'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Demo OTP: $otp'),
-              const SizedBox(height: 12),
-              TextField(
-                controller: otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: InputDecoration(
-                  labelText: 'Enter OTP',
-                  errorText: errorMessage.isEmpty ? null : errorMessage,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => setDialogState(() {
-                otp = _generateOtp();
-                otpController.clear();
-                errorMessage = 'New OTP generated.';
-              }),
-              child: const Text('Resend'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (otpController.text.trim() != otp) {
-                  setDialogState(() => errorMessage = 'Incorrect OTP.');
-                  return;
-                }
-                Navigator.of(dialogContext).pop(true);
-              },
-              child: const Text('Verify'),
-            ),
-          ],
-        ),
-      ),
-    );
-    otpController.dispose();
-    return verified == true;
   }
 
   void logout() => setState(() {
@@ -287,12 +227,12 @@ class _TableHomeState extends State<TableHome> {
 
     final heroPanel = Container(
       padding: const EdgeInsets.all(40),
-      color: const Color(0xff202c3d),
+      color: const Color(0xff155ea8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: const [
-          Icon(Icons.directions_bus_filled, color: Color(0xfff28b65), size: 42),
+          Icon(Icons.directions_bus_filled, color: Colors.white, size: 42),
           SizedBox(height: 40),
           Text(
             'Explore the things\nyou love.',
@@ -306,7 +246,7 @@ class _TableHomeState extends State<TableHome> {
           Text(
             'Search routes, manage schedules,\nand sign in securely.',
             style: TextStyle(
-              color: Color(0xffb9c3d0),
+              color: Color(0xffdceaf7),
               fontSize: 14,
               height: 1.6,
             ),
@@ -460,7 +400,7 @@ class _TableHomeState extends State<TableHome> {
       const SizedBox(height: 24),
       _sectionTitle('All Schedules'),
       ...schedules.asMap().entries.map(
-        (e) => _scheduleTile(e.value, e.key, canDelete: true),
+        (entry) => _scheduleTile(entry.value, entry.key, canDelete: true),
       ),
       const SizedBox(height: 20),
       _sectionTitle('Create Driver Account'),
@@ -623,11 +563,14 @@ class _TableHomeState extends State<TableHome> {
   // ─── Driver Panel ─────────────────────────────────────────────────────────
 
   Widget _driverPanel() {
+    final driverIdentifiers = {
+      currentUser!.username.trim().toLowerCase(),
+      currentUser!.name.trim().toLowerCase(),
+      currentUser!.name.trim().split(' ').first.toLowerCase(),
+    };
     final mySchedules = schedules.where(
-      (s) =>
-          s.driver.toLowerCase() ==
-              currentUser!.name.split(' ').first.toLowerCase() ||
-          s.driver == 'John',
+      (schedule) =>
+          driverIdentifiers.contains(schedule.driver.trim().toLowerCase()),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -710,8 +653,11 @@ class _TableHomeState extends State<TableHome> {
     child: ListTile(
       isThreeLine: true,
       leading: CircleAvatar(
-        backgroundColor: const Color(0xfff6d4c4),
-        child: Text(item.routeNumber, style: const TextStyle(fontSize: 11)),
+        backgroundColor: const Color(0xffdceaf7),
+        child: Text(
+          item.routeNumber,
+          style: const TextStyle(fontSize: 11, color: Color(0xff155ea8)),
+        ),
       ),
       title: Text(
         item.route,
@@ -719,7 +665,8 @@ class _TableHomeState extends State<TableHome> {
       ),
       subtitle: Text(
         '${item.bus} · ${item.driver}\n'
-        '${item.departure}–${item.arrival}  ${item.type}  LKR ${item.price}',
+        '${item.departure}–${item.arrival}  ${item.type}  LKR ${item.price}'
+        '${item.pendingStatus == null ? '' : '\nPending approval: ${item.pendingStatus}'}',
       ),
       trailing: Wrap(
         spacing: 4,
@@ -728,13 +675,19 @@ class _TableHomeState extends State<TableHome> {
           Chip(label: Text(item.status)),
           if (currentUser!.role == 'Driver')
             PopupMenuButton<String>(
+              enabled: item.pendingStatus == null,
               onSelected: (v) {
-                item.status = v;
-                setState(() {});
+                _requestStatus(item, v);
               },
               itemBuilder: (_) => statuses
                   .map((v) => PopupMenuItem(value: v, child: Text(v)))
                   .toList(),
+            ),
+          if (currentUser!.role == 'Admin' && item.pendingStatus != null)
+            IconButton(
+              onPressed: () => _approveStatus(item),
+              tooltip: 'Approve ${item.pendingStatus} status',
+              icon: const Icon(Icons.check_circle_outline),
             ),
           if (canDelete)
             IconButton(
@@ -745,6 +698,57 @@ class _TableHomeState extends State<TableHome> {
       ),
     ),
   );
+
+  Future<void> _requestStatus(Schedule item, String status) async {
+    if (item.id == null) return;
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '$baseUrl/shedulle/${Uri.encodeComponent(item.id!)}/status-request',
+        ),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'status': status,
+          'driver_username': currentUser!.username,
+        }),
+      );
+      if (response.statusCode != 200) {
+        _message(_apiError(response, 'Could not request status update.'));
+        return;
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final updated = Schedule.fromJson(
+        data['shedulle'] as Map<String, dynamic>,
+      );
+      setState(() => schedules[schedules.indexOf(item)] = updated);
+      _message('Status sent to an admin for approval.');
+    } catch (error) {
+      _message('Could not request status update: $error');
+    }
+  }
+
+  Future<void> _approveStatus(Schedule item) async {
+    if (item.id == null) return;
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '$baseUrl/shedulle/${Uri.encodeComponent(item.id!)}/status-approve',
+        ),
+      );
+      if (response.statusCode != 200) {
+        _message(_apiError(response, 'Could not approve status update.'));
+        return;
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final updated = Schedule.fromJson(
+        data['shedulle'] as Map<String, dynamic>,
+      );
+      setState(() => schedules[schedules.indexOf(item)] = updated);
+      _message('Status approved.');
+    } catch (error) {
+      _message('Could not approve status update: $error');
+    }
+  }
 
   void _register() {
     final name = TextEditingController();
