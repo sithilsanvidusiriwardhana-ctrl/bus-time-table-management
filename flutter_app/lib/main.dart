@@ -76,7 +76,7 @@ class BusTableApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    title: 'Bus Time Table',
+    title: 'Bus Management System',
     theme: ThemeData(
       colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff1769aa)),
       scaffoldBackgroundColor: const Color(0xfff4f8fc),
