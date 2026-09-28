@@ -1,8 +1,24 @@
 import {shedulle} from '../modules/shedulle.modules.js';
+import {Route} from '../modules/route.modules.js';
+import {Bus} from '../modules/bus.modules.js';
+
+async function validateScheduleRoute({ route_number, bus_number, departure_time }) {
+    const route = await Route.findOne({ route_number: String(route_number || '').trim() });
+    if (!route) return 'Choose a registered route.';
+    const bus = await Bus.findOne({
+        bus_number: String(bus_number || '').trim(),
+        route_number: route.route_number,
+    });
+    if (!bus) return 'Choose a bus registered to this route.';
+    if (!route.departure_times.includes(String(departure_time || '').trim())) {
+        return 'Choose a departure time listed for this route.';
+    }
+    return null;
+}
 
 export const getShedulles = async (req, res) => {
     try {
-        const shedulles = await shedulle.find().sort({ route_number: 1, departure_time: 1 }).lean();
+        const shedulles = await shedulle.find({ status: { $not: /^departed$/i } }).sort({ route_number: 1, departure_time: 1 }).lean();
         res.status(200).json({ shedulles });
     } catch (error) {
         res.status(500).json({ message: 'Error loading shedulles.', error: error.message });
@@ -15,12 +31,37 @@ export const registerShedulle = async (req, res) => {
         if(!bus_number || !route_name || !route_number || !assign_driver || !departure_time || !arrival_time || !status || !bus_type) {
             return res.status(400).json({ message: 'All fields are required.' });
         }
+        const routeError = await validateScheduleRoute({ route_number, bus_number, departure_time });
+        if (routeError) return res.status(400).json({ message: routeError });
     const newShedulle = await shedulle.create({ bus_number, route_name, route_number, assign_driver, departure_time, arrival_time, status, bus_type, price });
         res.status(201).json({ message: 'Shedulle registered successfully.', shedulle: newShedulle });
     } catch (error) {
         res.status(500).json({ message: 'Error registering shedulle.', error: error.message });
     }
 }; 
+
+export const updateShedulle = async (req, res) => {
+    try {
+        const { bus_number, route_name, route_number, assign_driver, departure_time, arrival_time, status, bus_type, price } = req.body;
+        if(!bus_number || !route_name || !route_number || !assign_driver || !departure_time || !arrival_time || !status || !bus_type) {
+            return res.status(400).json({ message: 'All fields are required.' });
+        }
+        const routeError = await validateScheduleRoute({ route_number, bus_number, departure_time });
+        if (routeError) return res.status(400).json({ message: routeError });
+
+        const updatedSchedule = await shedulle.findByIdAndUpdate(
+            req.params.id,
+            { bus_number, route_name, route_number, assign_driver, departure_time, arrival_time, status, bus_type, price },
+            { new: true, runValidators: true }
+        );
+        if (!updatedSchedule) {
+            return res.status(404).json({ message: 'Schedule not found.' });
+        }
+        res.status(200).json({ message: 'Schedule updated successfully.', shedulle: updatedSchedule });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating schedule.', error: error.message });
+    }
+};
 
 export const deleteShedulle = async (req, res) => {
     try {

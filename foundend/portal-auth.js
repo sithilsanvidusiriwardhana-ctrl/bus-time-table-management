@@ -47,7 +47,7 @@ function getRolePage(role) {
 function isAllowedRolePage(role, page) {
   const normalizedRole = String(role || '').trim().toLowerCase();
   if (normalizedRole === 'admin') {
-    return ['admin.html', 'admin-drivers.html', 'admin-schedules.html'].includes(page);
+    return ['admin.html', 'admin-drivers.html', 'admin-schedules.html', 'admin-routes.html', 'admin-buses.html'].includes(page);
   }
   return page === getRolePage(normalizedRole);
 }

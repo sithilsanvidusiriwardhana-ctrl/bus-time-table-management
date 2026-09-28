@@ -47,8 +47,26 @@
                 <option value="Delayed">Delayed</option>
                 <option value="Departed">Departed</option>
               </select>
+              <button id="openPassengerTimetable" class="btn btn-secondary" type="button" data-action="open-timetable">Timetable</button>
             </div>
             <div id="passengerTrips"></div>
+          </div>
+          <div id="passengerTimetableModal" class="modal hidden" aria-hidden="true">
+            <div class="modal-overlay" data-action="close-timetable"></div>
+            <section class="modal-content passenger-timetable-dialog" role="dialog" aria-modal="true" aria-labelledby="passengerTimetableTitle">
+              <div class="passenger-timetable-heading">
+                <h3 id="passengerTimetableTitle">Route timetable</h3>
+                <button class="timetable-close-btn" type="button" data-action="close-timetable" aria-label="Close timetable">×</button>
+              </div>
+              <label class="field-group" for="passengerRouteSelect">Select route
+                <select id="passengerRouteSelect">
+                  <option value="">Choose a route</option>
+                </select>
+              </label>
+              <section id="passengerRouteTimetable" class="passenger-route-timetable" aria-live="polite">
+                <p>Select a route to view its timetable.</p>
+              </section>
+            </section>
           </div>
         </section>
       </main>

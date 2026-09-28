@@ -19,6 +19,8 @@
         <aside class="admin-side-nav" aria-label="Admin management">
           <h3>Admin tools</h3>
           <a href="admin-schedules.html" class="active">Schedule management</a>
+          <a href="admin-routes.html">Route timetables</a>
+          <a href="admin-buses.html">Bus management</a>
           <a href="admin-drivers.html">Driver management</a>
         </aside>
 
@@ -48,11 +50,11 @@
             </div>
 
             <form id="scheduleForm" class="schedule-form">
-              <div class="field-group"><label for="route">Route name</label><input id="route" name="route" type="text" required /></div>
-              <div class="field-group"><label for="routeNumber">Route number</label><input id="routeNumber" name="routeNumber" type="text" placeholder="e.g. 12A" required /></div>
-              <div class="field-group"><label for="busNumber">Bus number</label><input id="busNumber" name="busNumber" type="text" required /></div>
+              <div class="field-group"><label for="routeNumber">Route</label><select id="routeNumber" name="routeNumber" required><option value="">— Select a route —</option></select></div>
+              <input id="route" name="route" type="hidden" />
+              <div class="field-group"><label for="busNumber">Bus</label><select id="busNumber" name="busNumber" required disabled><option value="">— Select a route first —</option></select></div>
               <div class="field-group"><label for="driverName">Assign driver</label><select id="driverName" name="driverName" required><option value="">— Select a driver —</option></select></div>
-              <div class="field-group"><label for="departureTime">Departure</label><input id="departureTime" name="departureTime" type="time" required /></div>
+              <div class="field-group"><label for="departureTime">Departure</label><select id="departureTime" name="departureTime" required disabled><option value="">— Select a route first —</option></select></div>
               <div class="field-group"><label for="arrivalTime">Arrival</label><input id="arrivalTime" name="arrivalTime" type="time" required /></div>
               <div class="field-group"><label for="status">Status</label><select id="status" name="status"><option value="On Time">On Time</option><option value="Delayed">Delayed</option><option value="Departed">Departed</option></select></div>
               <div class="field-group"><label for="busType">Bus type</label><select id="busType" name="busType"><option value="Normal">Normal</option><option value="Semi Luxiri">Semi Luxiri</option><option value="Luxire">Luxire</option></select></div>
