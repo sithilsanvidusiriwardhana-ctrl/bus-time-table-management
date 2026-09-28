@@ -48,6 +48,7 @@
                 <option value="Departed">Departed</option>
               </select>
               <button id="openPassengerTimetable" class="btn btn-secondary" type="button" data-action="open-timetable">Timetable</button>
+              <button id="openPassengerPriceTable" class="btn btn-secondary" type="button" data-action="open-price-table">Price Table</button>
             </div>
             <div id="passengerTrips"></div>
           </div>
@@ -66,6 +67,47 @@
               <section id="passengerRouteTimetable" class="passenger-route-timetable" aria-live="polite">
                 <p>Select a route to view its timetable.</p>
               </section>
+            </section>
+          </div>
+
+          <!-- Passenger Price Table Modal -->
+          <div id="passengerPriceModal" class="modal hidden" aria-hidden="true">
+            <div class="modal-overlay" data-action="close-passenger-price-modal"></div>
+            <section class="modal-content fare-matrix-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="passengerPriceTitle">
+              <div class="passenger-timetable-heading">
+                <div>
+                  <p class="eyebrow">Fare Information</p>
+                  <h3 id="passengerPriceTitle">Route Price Table</h3>
+                </div>
+                <button class="timetable-close-btn" type="button" data-action="close-passenger-price-modal" aria-label="Close price table">×</button>
+              </div>
+
+              <div class="field-group">
+                <label for="passengerPriceRouteSelect">Select route</label>
+                <select id="passengerPriceRouteSelect" class="form-control">
+                  <option value="">Choose a route</option>
+                </select>
+              </div>
+
+              <div id="passengerFareMatrixContainer" class="fare-matrix-wrap" style="margin-top: 1rem;">
+                <p class="helper-text">Select a route to display the section price matrix.</p>
+              </div>
+
+              <!-- Quick Fare Checker -->
+              <div id="passengerQuickFareBox" class="panel-card-inner hidden" style="margin-top: 1.25rem;">
+                <h4 style="margin: 0 0 0.5rem; font-size: 1rem;">Section Trip Fare Calculator</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+                  <div class="field-group">
+                    <label for="calcFromSection">From section</label>
+                    <select id="calcFromSection" class="form-control"></select>
+                  </div>
+                  <div class="field-group">
+                    <label for="calcToSection">To section</label>
+                    <select id="calcToSection" class="form-control"></select>
+                  </div>
+                </div>
+                <div id="calcFareResult" class="calc-result-badge" style="margin-top: 0.75rem;"></div>
+              </div>
             </section>
           </div>
         </section>

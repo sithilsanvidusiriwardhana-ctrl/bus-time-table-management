@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Price Table Management | Bus Time Table</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-body">
+    <div class="page-shell">
+      <nav class="page-nav" aria-label="Portal navigation">
+        <a href="index.html">Home</a><a href="passenger.html">Passenger</a><a href="driver.html">Driver</a><a href="admin.html">Admin</a>
+      </nav>
+      <main class="page-main admin-layout">
+        <aside class="admin-side-nav" aria-label="Admin management">
+          <h3>Admin tools</h3>
+          <a href="admin-schedules.html">Schedule management</a>
+          <a href="admin-routes.html">Route timetables</a>
+          <a href="admin-buses.html">Bus management</a>
+          <a href="admin-drivers.html">Driver management</a>
+          <a href="admin-fares.html" class="active">Price table</a>
+        </aside>
+
+        <section id="dashboardSection" class="dashboard-shell">
+          <div class="dashboard-header">
+            <div>
+              <p class="eyebrow">Admin workspace</p>
+              <h2 id="dashboardTitle">Price Table Management</h2>
+            </div>
+            <div class="dashboard-actions">
+              <span id="userRoleBadge" class="role-badge">Admin</span>
+              <button id="logoutBtn" class="btn btn-secondary" type="button">Logout</button>
+            </div>
+          </div>
+          <div id="welcomeCard" class="welcome-card"></div>
+
+          <div id="adminPanel" class="panel">
+            <div class="panel-heading">
+              <h3>System Price & Fare Rules</h3>
+              <p>Set up standard distance-based payment rates and manage stage payment price tables for each route.</p>
+            </div>
+
+            <!-- Master Fare Rules Card -->
+            <div class="fare-card-block">
+              <div class="section-manager-header">
+                <div>
+                  <h4 style="margin: 0; font-size: 1.15rem;">1. Master Distance Price Table (Fare Scale)</h4>
+                  <p class="helper-text" style="margin: 0.25rem 0 0;">
+                    Define standard price stages by cumulative kilometers. When updated, section prices for all routes update automatically.
+                  </p>
+                </div>
+                <button id="addFareRuleBtn" class="btn btn-secondary btn-sm" type="button">+ Add price stage</button>
+              </div>
+
+              <div class="table-wrap" style="margin-top: 1rem;">
+                <table class="fare-rules-table" id="fareRulesTable">
+                  <thead>
+                    <tr>
+                      <th style="width: 15%;">Stage #</th>
+                      <th style="width: 25%;">Up to Distance (km)</th>
+                      <th style="width: 25%;">Normal Bus Price (Rs.)</th>
+                      <th style="width: 20%;">Semi Luxury / Luxury Est.</th>
+                      <th style="width: 15%;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fareRulesTableBody">
+                    <!-- Populated by JS -->
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="margin-top: 1rem; display: flex; justify-content: flex-end; align-items: center; gap: 1rem;">
+                <button id="saveFareRulesBtn" class="btn btn-primary" type="button">Save master price table</button>
+              </div>
+              <p id="fareRulesMessage" class="form-success" role="status" style="margin-top: 0.5rem;"></p>
+            </div>
+
+            <!-- Route Specific Section & Fare Matrix Card -->
+            <div class="fare-card-block" style="margin-top: 2rem;">
+              <div class="section-manager-header">
+                <div>
+                  <h4 style="margin: 0; font-size: 1.15rem;">2. Route Sections & Price Matrix</h4>
+                  <p class="helper-text" style="margin: 0.25rem 0 0;">
+                    Select a route to configure its road sections and view/edit the payment price matrix.
+                  </p>
+                </div>
+              </div>
+
+              <div class="field-group" style="margin-top: 1rem; max-width: 450px;">
+                <label for="adminFareRouteSelect">Select Route</label>
+                <select id="adminFareRouteSelect" class="form-control">
+                  <option value="">— Select a route to manage —</option>
+                </select>
+              </div>
+
+              <div id="routeFareEditorArea" class="hidden" style="margin-top: 1.5rem;">
+                <div class="panel-card-inner">
+                  <div class="section-manager-header">
+                    <h5 style="margin: 0; font-size: 1.05rem;">Route Sections (Sectors)</h5>
+                    <button id="adminAddSectionBtn" class="btn btn-secondary btn-sm" type="button">+ Add section</button>
+                  </div>
+                  <p class="helper-text">Specify the names of sectors and their distance (km) from origin. The system automatically calculates prices from the master price table.</p>
+                  <div id="adminRouteSectionsList" class="sections-input-list"></div>
+                </div>
+
+                <div class="panel-card-inner" style="margin-top: 1.5rem;">
+                  <div class="section-manager-header">
+                    <h5 style="margin: 0; font-size: 1.05rem;">Live Section Price Table (Fare Matrix)</h5>
+                    <span class="badge-pill">Display Table</span>
+                  </div>
+                  <p class="helper-text">Payment price between sections. Click any price to override with custom value or keep auto-calculated values.</p>
+                  <div class="fare-matrix-wrap" id="adminFareMatrixTableContainer"></div>
+                </div>
+
+                <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                  <button id="adminResetFaresBtn" class="btn btn-secondary" type="button">Reset to auto-calculated fares</button>
+                  <button id="adminSaveRouteFaresBtn" class="btn btn-primary" type="button">Save route sections & prices</button>
+                </div>
+                <p id="routeFareSaveMessage" class="form-success" role="status" style="margin-top: 0.5rem;"></p>
+              </div>
+            </div>
+
+          </div>
+          <div id="driverPanel" class="panel hidden"></div>
+          <div id="passengerPanel" class="panel hidden"></div>
+        </section>
+      </main>
+    </div>
+    <script src="otp-utils.js"></script>
+    <script src="app.js"></script>
+    <script src="portal-auth.js"></script>
+  </body>
+</html>

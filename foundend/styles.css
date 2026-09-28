@@ -796,3 +796,265 @@ th {
     padding-top: 1rem;
   }
 }
+
+/* ─── Price Table & Fare Matrix Styles (Excel-style matching user screenshot) ─── */
+
+.fare-matrix-modal-dialog {
+  max-width: 860px;
+  width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.fare-card-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.panel-card-inner {
+  background: #f8fbff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.section-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.helper-text {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin: 0.35rem 0 0.75rem;
+}
+
+.badge-pill {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.sections-input-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.section-row-item {
+  display: grid;
+  grid-template-columns: 80px 1fr 130px 42px;
+  gap: 0.75rem;
+  align-items: center;
+  background: var(--surface);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.section-index-badge {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--primary-dark);
+  background: #eef6ff;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.section-delete-btn {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid rgba(216, 67, 67, 0.3);
+  border-radius: 6px;
+  height: 36px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.section-delete-btn:hover {
+  background: #fee2e2;
+}
+
+/* Excel-Style Fare Matrix Table */
+.fare-matrix-wrap {
+  overflow-x: auto;
+  margin-top: 0.75rem;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.excel-fare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Calibri, "Segoe UI", Arial, sans-serif;
+  border: 2px solid #2f5597;
+}
+
+.excel-fare-table th,
+.excel-fare-table td {
+  border: 1px solid #8ea9db;
+  padding: 0.6rem 0.85rem;
+  text-align: center;
+  font-size: 0.98rem;
+}
+
+.excel-fare-table thead th {
+  background-color: #2f5597 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  position: relative;
+  text-align: center;
+  user-select: none;
+}
+
+.excel-fare-table thead th.first-col-header {
+  text-align: left;
+  background-color: #244275 !important;
+}
+
+.excel-fare-table thead th .excel-filter-caret {
+  display: inline-block;
+  margin-left: 0.45rem;
+  font-size: 0.7rem;
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.excel-fare-table tbody tr.row-even {
+  background-color: #d9e1f2;
+}
+
+.excel-fare-table tbody tr.row-odd {
+  background-color: #ffffff;
+}
+
+.excel-fare-table tbody td.row-header {
+  font-weight: 700;
+  text-align: left;
+  background-color: #b4c6e7 !important;
+  color: #1f3864;
+  white-space: nowrap;
+}
+
+.excel-fare-table tbody td.fare-cell {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #1a2a40;
+  transition: all 0.15s ease;
+}
+
+.excel-fare-table tbody td.fare-cell:hover {
+  background-color: #fff2cc !important;
+  color: #b25900;
+  cursor: pointer;
+  transform: scale(1.02);
+}
+
+.excel-fare-table tbody td.fare-cell.highlight-fare {
+  background-color: #ffe699 !important;
+  color: #b25900 !important;
+  box-shadow: inset 0 0 0 2px #d56800;
+}
+
+.excel-fare-table tbody td.empty-cell {
+  background-color: rgba(240, 243, 248, 0.4);
+  color: transparent;
+}
+
+/* Master Fare Rules Table */
+.fare-rules-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fare-rules-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  padding: 0.65rem 0.8rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.fare-rules-table td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.fare-rules-table input[type="number"] {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+/* Quick Fare Calculator */
+.calc-result-badge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.calc-fare-card {
+  flex: 1;
+  min-width: 130px;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.calc-fare-card.normal {
+  border-top: 4px solid #1e88e5;
+}
+
+.calc-fare-card.semi {
+  border-top: 4px solid #7c3aed;
+}
+
+.calc-fare-card.luxury {
+  border-top: 4px solid #0f766e;
+}
+
+.calc-fare-type {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.calc-fare-amount {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 768px) {
+  .section-row-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+

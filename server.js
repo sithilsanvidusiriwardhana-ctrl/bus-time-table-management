@@ -8,6 +8,7 @@ import shedulleRoutes from './backend/routes/shedulle.routes.js';
 import userRoutes from './backend/routes/user.routes.js';
 import routeRoutes from './backend/routes/route.routes.js';
 import busRoutes from './backend/routes/bus.routes.js';
+import fareRuleRoutes from './backend/routes/fare_rule.routes.js';
 dotenv.config();
 
 const currentDirectory = process.cwd();
@@ -22,6 +23,7 @@ const shedulleRouter = getRouter(shedulleRoutes);
 const userRouter = getRouter(userRoutes);
 const routeRouter = getRouter(routeRoutes);
 const busRouter = getRouter(busRoutes);
+const fareRuleRouter = getRouter(fareRuleRoutes);
 
 app.use(express.json());
 app.use(express.static(path.join(currentDirectory, 'foundend')));
@@ -32,6 +34,7 @@ app.use('/api/shedulle', shedulleRouter);
 app.use('/api/users', userRouter);
 app.use('/api/routes', routeRouter);
 app.use('/api/buses', busRouter);
+app.use('/api/fare-rules', fareRuleRouter);
 
 // Construct URI safely from environment variables
 const username = process.env.DB_USERNAME;
