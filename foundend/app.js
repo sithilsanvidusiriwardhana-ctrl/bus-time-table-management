@@ -21,6 +21,7 @@ state.adminSelectedFareRouteId = null;
 let editingScheduleId = null;
 let editingRouteId = null;
 let editingBusId = null;
+let pendingDepartureOperation = null;
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => ({
@@ -273,6 +274,96 @@ function render() {
   }
   const timetableModal = document.getElementById('passengerTimetableModal');
   if (timetableModal && state.currentUser?.role !== 'Passenger') closePassengerTimetable();
+}
+
+function toggleDepartureDelayFields() {
+  const delayedSelect = document.getElementById('departureIsDelayed');
+  const delayFields = document.getElementById('departureDelayFields');
+  const delayMinutes = document.getElementById('departureDelayMinutes');
+  const delayReason = document.getElementById('departureDelayReason');
+  const isDelayed = delayedSelect?.value === 'true';
+  if (delayFields) delayFields.classList.toggle('hidden', !isDelayed);
+  if (delayMinutes) delayMinutes.required = isDelayed;
+  if (delayReason) delayReason.required = isDelayed;
+  toggleDepartureOtherReason();
+}
+
+function toggleDepartureOtherReason() {
+  const reasonSelect = document.getElementById('departureDelayReason');
+  const otherFields = document.getElementById('departureOtherReasonFields');
+  const otherReason = document.getElementById('departureOtherReason');
+  const isOther = reasonSelect?.value === 'other' && document.getElementById('departureIsDelayed')?.value === 'true';
+  if (otherFields) otherFields.classList.toggle('hidden', !isOther);
+  if (otherReason) otherReason.required = isOther;
+}
+
+function openDepartureDetailsModal(operation) {
+  const modal = document.getElementById('departureDetailsModal');
+  const form = document.getElementById('departureDetailsForm');
+  if (!modal || !form) return;
+
+  pendingDepartureOperation = operation;
+  form.reset();
+  const now = new Date();
+  const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+  const existing = operation.departureDetails || {};
+  document.getElementById('departureBusNumber').value = operation.busNumber || '';
+  document.getElementById('actualDepartureDate').value = existing.actual_departure_date || localNow.slice(0, 10);
+  document.getElementById('actualDepartureTime').value = existing.actual_departure_time || localNow.slice(11, 16);
+  document.getElementById('departureIsDelayed').value = existing.is_delayed ? 'true' : 'false';
+  document.getElementById('departureDelayMinutes').value = existing.delay_minutes || '';
+  document.getElementById('departureDelayReason').value = existing.delay_reason || '';
+  document.getElementById('departureOtherReason').value = existing.other_delay_reason || '';
+  toggleDepartureDelayFields();
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  document.getElementById('actualDepartureDate').focus();
+}
+
+function closeDepartureDetailsModal() {
+  const modal = document.getElementById('departureDetailsModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  pendingDepartureOperation = null;
+}
+
+function getDepartureDetailsFromForm() {
+  const isDelayed = document.getElementById('departureIsDelayed').value === 'true';
+  return {
+    actual_departure_date: document.getElementById('actualDepartureDate').value,
+    actual_departure_time: document.getElementById('actualDepartureTime').value,
+    is_delayed: isDelayed,
+    delay_minutes: isDelayed ? Number(document.getElementById('departureDelayMinutes').value) : 0,
+    delay_reason: isDelayed ? document.getElementById('departureDelayReason').value : '',
+    other_delay_reason: isDelayed ? document.getElementById('departureOtherReason').value.trim() : ''
+  };
+}
+
+async function handleDepartureDetailsSubmit(event) {
+  event.preventDefault();
+  if (!pendingDepartureOperation) return;
+
+  const operation = pendingDepartureOperation;
+  const departureDetails = getDepartureDetailsFromForm();
+  try {
+    if (operation.type === 'schedule') {
+      await saveSchedulePayload({ ...operation.schedulePayload, ...departureDetails }, operation.scheduleId);
+      return;
+    }
+
+    const response = await fetch(`/api/shedulle/${encodeURIComponent(operation.scheduleId)}/status-approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(departureDetails)
+    });
+    const result = await readApiResponse(response);
+    if (!response.ok) throw new Error(result.message || 'Unable to approve departure status.');
+    closeDepartureDetailsModal();
+    await loadSchedulesFromDatabase();
+  } catch (error) {
+    alert(error.message || 'Unable to save departure details.');
+  }
 }
 
 function getUserDisplayName(user) {
@@ -646,9 +737,29 @@ function renderPassengerRouteTimetable(routeNumber) {
   const rows = [...hourGroups.entries()].map(([hour, minutes]) => `
     <tr><th scope="row">${escapeHtml(hour)}</th><td>${minutes.map((minute) => `[${escapeHtml(minute)}]`).join(' ')}</td></tr>
   `).join('');
+  const departedTrips = state.schedules.filter((trip) => getRouteNumber(trip) === routeNumber && isDepartedSchedule(trip));
+  const departureRows = departedTrips.length
+    ? departedTrips.map((trip) => {
+        const actualDeparture = [trip.actualDepartureDate, trip.actualDepartureTime].filter(Boolean).join(' ') || 'Details unavailable';
+        const delay = trip.isDelayed ? `${escapeHtml(trip.delayMinutes)} minutes` : 'No delay';
+        const reasons = {
+          traffic: 'Traffic',
+          slow_driving: 'Slow driving',
+          accident: 'Accident',
+          breakdown: 'Breakdown',
+          other: 'Other'
+        };
+        const reason = trip.isDelayed
+          ? trip.otherDelayReason || reasons[trip.delayReason] || trip.delayReason || 'Not provided'
+          : '—';
+        return `<tr><td>${escapeHtml(trip.busNumber)}</td><td>${escapeHtml(trip.departureTime)}</td><td>${escapeHtml(actualDeparture)}</td><td>${delay}</td><td>${escapeHtml(reason)}</td></tr>`;
+      }).join('')
+    : '<tr><td colspan="5">No departed buses recorded for this route.</td></tr>';
   timetable.innerHTML = `
     <div class="route-group-header"><h4 class="route-group-title">Route ${escapeHtml(route.route_number)}</h4><p class="route-summary">${escapeHtml(route.route_name)}</p></div>
-    <table class="route-timetable"><thead><tr><th>Hours</th><th>Minutes</th></tr></thead><tbody>${rows}</tbody></table>`;
+    <table class="route-timetable"><thead><tr><th>Hours</th><th>Minutes</th></tr></thead><tbody>${rows}</tbody></table>
+    <h4 class="passenger-departures-title">Bus departure updates</h4>
+    <div class="table-wrap"><table class="route-timetable"><thead><tr><th>Bus</th><th>Scheduled</th><th>Actual departure</th><th>Delay</th><th>Reason</th></tr></thead><tbody>${departureRows}</tbody></table></div>`;
 }
 
 function getStatusClass(status) {
@@ -874,36 +985,53 @@ async function handleScheduleSubmit(event) {
     return;
   }
 
+  const schedulePayload = {
+    bus_number: newSchedule.busNumber,
+    route_name: newSchedule.route,
+    route_number: newSchedule.routeNumber,
+    assign_driver: newSchedule.assignedDriverUsername,
+    departure_time: newSchedule.departureTime,
+    arrival_time: newSchedule.arrivalTime,
+    status: newSchedule.status,
+    bus_type: newSchedule.type
+  };
+
+  if (newSchedule.status === 'Departed') {
+    const schedule = editingScheduleId ? getScheduleById(editingScheduleId) : null;
+    openDepartureDetailsModal({
+      type: 'schedule',
+      scheduleId: editingScheduleId,
+      schedulePayload,
+      busNumber: newSchedule.busNumber,
+      departureDetails: schedule ? {
+        actual_departure_date: schedule.actualDepartureDate,
+        actual_departure_time: schedule.actualDepartureTime,
+        is_delayed: schedule.isDelayed,
+        delay_minutes: schedule.delayMinutes,
+        delay_reason: schedule.delayReason,
+        other_delay_reason: schedule.otherDelayReason
+      } : null
+    });
+    return;
+  }
+
+  await saveSchedulePayload(schedulePayload, editingScheduleId);
+}
+
+async function saveSchedulePayload(schedulePayload, scheduleId) {
   try {
-    // Send data to your MongoDB backend route
-    const schedulePayload = {
-      bus_number: newSchedule.busNumber,
-      route_name: newSchedule.route,
-      route_number: newSchedule.routeNumber,
-      assign_driver: newSchedule.assignedDriverUsername,
-      departure_time: newSchedule.departureTime,
-      arrival_time: newSchedule.arrivalTime,
-      status: newSchedule.status,
-      bus_type: newSchedule.type
-    };
     const response = await fetch(
-      editingScheduleId
-        ? `/api/shedulle/${encodeURIComponent(editingScheduleId)}`
-        : '/api/shedulle/register',
+      scheduleId ? `/api/shedulle/${encodeURIComponent(scheduleId)}` : '/api/shedulle/register',
       {
-      method: editingScheduleId ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(schedulePayload)
+        method: scheduleId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(schedulePayload)
       }
     );
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || result.error || 'Failed to save schedule to database');
-    }
-
+    const result = await readApiResponse(response);
+    if (!response.ok) throw new Error(result.message || result.error || 'Failed to save schedule to database.');
     resetForm();
+    closeDepartureDetailsModal();
     await loadSchedulesFromDatabase();
   } catch (error) {
     console.error('Error saving schedule:', error);
@@ -1133,6 +1261,12 @@ async function loadSchedulesFromDatabase() {
       status: item.status,
       pendingStatus: item.pending_status,
       pendingStatusDriver: item.pending_status_driver,
+      actualDepartureDate: item.actual_departure_date || '',
+      actualDepartureTime: item.actual_departure_time || '',
+      isDelayed: Boolean(item.is_delayed),
+      delayMinutes: Number(item.delay_minutes) || 0,
+      delayReason: item.delay_reason || '',
+      otherDelayReason: item.other_delay_reason || '',
       type: item.bus_type,
       priceBase: Number(item.price_base) || 1200
     }));
@@ -1933,6 +2067,15 @@ async function handleTableClick(event) {
   const action = button.getAttribute('data-action');
 
   if (action === 'approve-status') {
+    const schedule = getScheduleById(id);
+    if (schedule?.pendingStatus === 'Departed') {
+      openDepartureDetailsModal({
+        type: 'approval',
+        scheduleId: id,
+        busNumber: schedule.busNumber
+      });
+      return;
+    }
     try {
       const response = await fetch(`/api/shedulle/${encodeURIComponent(id)}/status-approve`, { method: 'POST' });
       const result = await readApiResponse(response);
@@ -2048,6 +2191,14 @@ function attachEvents() {
   if (loginForm) loginForm.addEventListener('submit', handleLogin);
   if (registerForm) registerForm.addEventListener('submit', handleRegister);
   if (scheduleForm) scheduleForm.addEventListener('submit', handleScheduleSubmit);
+  const departureDetailsForm = document.getElementById('departureDetailsForm');
+  if (departureDetailsForm) departureDetailsForm.addEventListener('submit', handleDepartureDetailsSubmit);
+  const departureIsDelayed = document.getElementById('departureIsDelayed');
+  if (departureIsDelayed) departureIsDelayed.addEventListener('change', toggleDepartureDelayFields);
+  const departureDelayReason = document.getElementById('departureDelayReason');
+  if (departureDelayReason) departureDelayReason.addEventListener('change', toggleDepartureOtherReason);
+  const cancelDepartureDetails = document.getElementById('cancelDepartureDetails');
+  if (cancelDepartureDetails) cancelDepartureDetails.addEventListener('click', closeDepartureDetailsModal);
   if (routeForm) routeForm.addEventListener('submit', handleRouteSubmit);
   if (busForm) busForm.addEventListener('submit', handleBusSubmit);
   if (routeManagementList) routeManagementList.addEventListener('click', handleRouteManagementClick);

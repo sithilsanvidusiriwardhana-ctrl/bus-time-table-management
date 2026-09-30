@@ -64,6 +64,60 @@
 
             <div class="table-wrap"><div id="routeTimetableGroups"></div></div>
           </div>
+          <div id="departureDetailsModal" class="modal hidden" aria-hidden="true">
+            <div class="modal-overlay"></div>
+            <section class="modal-content departure-details-dialog" role="dialog" aria-modal="true" aria-labelledby="departureDetailsTitle">
+              <h3 id="departureDetailsTitle">Record bus departure</h3>
+              <form id="departureDetailsForm">
+                <div class="departure-detail-grid">
+                  <div class="field-group">
+                    <label for="departureBusNumber">Bus number</label>
+                    <input id="departureBusNumber" type="text" readonly />
+                  </div>
+                  <div class="field-group">
+                    <label for="actualDepartureDate">Departure date</label>
+                    <input id="actualDepartureDate" type="date" required />
+                  </div>
+                  <div class="field-group">
+                    <label for="actualDepartureTime">Departure time</label>
+                    <input id="actualDepartureTime" type="time" required />
+                  </div>
+                  <div class="field-group">
+                    <label for="departureIsDelayed">Is the bus delayed?</label>
+                    <select id="departureIsDelayed">
+                      <option value="false">No</option>
+                      <option value="true">Yes</option>
+                    </select>
+                  </div>
+                </div>
+                <div id="departureDelayFields" class="departure-detail-grid hidden">
+                  <div class="field-group">
+                    <label for="departureDelayMinutes">Delay duration (minutes)</label>
+                    <input id="departureDelayMinutes" type="number" min="1" step="1" />
+                  </div>
+                  <div class="field-group">
+                    <label for="departureDelayReason">Reason for delay</label>
+                    <select id="departureDelayReason">
+                      <option value="">Choose a reason</option>
+                      <option value="traffic">Traffic</option>
+                      <option value="slow_driving">Slow driving</option>
+                      <option value="accident">Accident</option>
+                      <option value="breakdown">Breakdown</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div id="departureOtherReasonFields" class="field-group hidden">
+                    <label for="departureOtherReason">Other reason</label>
+                    <input id="departureOtherReason" type="text" maxlength="200" />
+                  </div>
+                </div>
+                <div class="departure-detail-actions">
+                  <button id="cancelDepartureDetails" class="btn btn-secondary" type="button">Cancel</button>
+                  <button class="btn btn-primary" type="submit">Save departure</button>
+                </div>
+              </form>
+            </section>
+          </div>
           <div id="driverPanel" class="panel hidden"></div>
           <div id="passengerPanel" class="panel hidden"></div>
         </section>

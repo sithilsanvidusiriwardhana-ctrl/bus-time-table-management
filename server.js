@@ -9,6 +9,7 @@ import userRoutes from './backend/routes/user.routes.js';
 import routeRoutes from './backend/routes/route.routes.js';
 import busRoutes from './backend/routes/bus.routes.js';
 import fareRuleRoutes from './backend/routes/fare_rule.routes.js';
+import departureLogRoutes from './backend/routes/departureLog.routes.js';
 dotenv.config();
 
 const currentDirectory = process.cwd();
@@ -24,6 +25,7 @@ const userRouter = getRouter(userRoutes);
 const routeRouter = getRouter(routeRoutes);
 const busRouter = getRouter(busRoutes);
 const fareRuleRouter = getRouter(fareRuleRoutes);
+const departureLogRouter = getRouter(departureLogRoutes);
 
 app.use(express.json());
 app.use(express.static(path.join(currentDirectory, 'foundend')));
@@ -35,6 +37,7 @@ app.use('/api/users', userRouter);
 app.use('/api/routes', routeRouter);
 app.use('/api/buses', busRouter);
 app.use('/api/fare-rules', fareRuleRouter);
+app.use('/api/departure-logs', departureLogRouter);
 
 // Construct URI safely from environment variables
 const username = process.env.DB_USERNAME;

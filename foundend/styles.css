@@ -708,6 +708,31 @@ th {
   box-shadow: 0 20px 40px rgba(2,6,23,0.2);
 }
 
+.departure-details-dialog {
+  width: min(560px, calc(100% - 2rem));
+}
+
+.departure-details-dialog h3 {
+  margin: 0 0 1rem;
+}
+
+.departure-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.8rem;
+}
+
+.departure-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.passenger-departures-title {
+  margin: 1.25rem 0 0.5rem;
+}
+
 #priceTable th, #priceTable td { padding: 0.6rem; border-bottom: 1px solid var(--border); }
 
 /* ensure hidden modal cannot be shown by later .modal rule */
