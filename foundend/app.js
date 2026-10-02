@@ -215,7 +215,8 @@ function normalizeRole(role) {
   return {
     admin: 'Admin',
     driver: 'Driver',
-    passenger: 'Passenger'
+    passenger: 'Passenger',
+    'train master': 'Train Master'
   }[roleName] || role;
 }
 
@@ -227,6 +228,8 @@ function getRolePage(role) {
       return 'driver.html';
     case 'Passenger':
       return 'passenger.html';
+    case 'Train Master':
+      return 'train-master.html';
     default:
       return 'index.html';
   }
@@ -237,6 +240,7 @@ function isAllowedRolePage(role, page) {
   if (normalizedRole === 'Admin') {
     return ['admin.html', 'admin-drivers.html', 'admin-schedules.html'].includes(page);
   }
+  if (normalizedRole === 'Train Master') return page === 'train-master.html';
   return page === getRolePage(normalizedRole);
 }
 
@@ -700,8 +704,10 @@ function renderPassengerPanel() {
                         <td>${trip.arrivalTime}</td>
                         <td><span class="status-pill ${getStatusClass(trip.status)}">${trip.status}</span></td>
                         <td>
+                          <div class="passenger-fare-actions">
                           <button class="price-btn" data-action="price" data-id="${trip.id}">${formatCurrency(trip.priceBase || 1200)}</button>
-                          <button class="action-btn" style="background:#e0f2fe; color:#0369a1; padding:0.25rem 0.5rem; font-size:0.75rem; margin-top:0.25rem; display:block;" data-action="view-route-fares" data-route="${escapeHtml(trip.routeNumber)}">Stage prices</button>
+                          <button class="action-btn passenger-stage-prices-btn" data-action="view-route-fares" data-route="${escapeHtml(trip.routeNumber)}">Stage prices</button>
+                          </div>
                         </td>
                       </tr>
                     `
@@ -1242,14 +1248,29 @@ function renderDriverAccountsList() {
 
 async function loadSchedulesFromDatabase() {
   try {
-    const response = await fetch('/api/shedulle');
-    const result = await response.json();
+    const [scheduleResponse, logResponse] = await Promise.all([
+      fetch('/api/shedulle'),
+      fetch('/api/departure-logs')
+    ]);
+    const result = await scheduleResponse.json();
+    const logResult = logResponse.ok ? await logResponse.json() : { logs: [] };
 
-    if (!response.ok) {
+    if (!scheduleResponse.ok) {
       throw new Error(result.message || 'Failed to load schedules from MongoDB.');
     }
 
-    state.schedules = (Array.isArray(result.shedulles) ? result.shedulles : []).map((item) => ({
+    // A schedule can have many trips. The newest departure log is used for
+    // the timetable display; all records remain in departure_logs.
+    const latestLogByScheduleId = new Map();
+    (Array.isArray(logResult.logs) ? logResult.logs : []).forEach((log) => {
+      if (!latestLogByScheduleId.has(String(log.schedule_id))) {
+        latestLogByScheduleId.set(String(log.schedule_id), log);
+      }
+    });
+
+    state.schedules = (Array.isArray(result.shedulles) ? result.shedulles : []).map((item) => {
+      const departureLog = latestLogByScheduleId.get(String(item._id)) || {};
+      return {
       id: String(item._id),
       route: item.route_name,
       routeNumber: item.route_number,
@@ -1261,15 +1282,16 @@ async function loadSchedulesFromDatabase() {
       status: item.status,
       pendingStatus: item.pending_status,
       pendingStatusDriver: item.pending_status_driver,
-      actualDepartureDate: item.actual_departure_date || '',
-      actualDepartureTime: item.actual_departure_time || '',
-      isDelayed: Boolean(item.is_delayed),
-      delayMinutes: Number(item.delay_minutes) || 0,
-      delayReason: item.delay_reason || '',
-      otherDelayReason: item.other_delay_reason || '',
+      actualDepartureDate: departureLog.actual_departure_date || '',
+      actualDepartureTime: departureLog.actual_departure_time || '',
+      isDelayed: Boolean(departureLog.is_delayed),
+      delayMinutes: Number(departureLog.delay_minutes) || 0,
+      delayReason: departureLog.delay_reason || '',
+      otherDelayReason: departureLog.other_delay_reason || '',
       type: item.bus_type,
       priceBase: Number(item.price_base) || 1200
-    }));
+    };
+    });
     saveState();
     render();
   } catch (error) {

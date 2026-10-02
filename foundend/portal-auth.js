@@ -39,6 +39,8 @@ function getRolePage(role) {
       return 'driver.html';
     case 'passenger':
       return 'passenger.html';
+    case 'train master':
+      return 'train-master.html';
     default:
       return 'index.html';
   }
@@ -49,6 +51,7 @@ function isAllowedRolePage(role, page) {
   if (normalizedRole === 'admin') {
     return ['admin.html', 'admin-drivers.html', 'admin-schedules.html', 'admin-routes.html', 'admin-buses.html', 'admin-fares.html'].includes(page);
   }
+  if (normalizedRole === 'train master') return page === 'train-master.html';
   return page === getRolePage(normalizedRole);
 }
 

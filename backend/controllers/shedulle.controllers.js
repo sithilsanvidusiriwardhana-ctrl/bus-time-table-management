@@ -47,6 +47,19 @@ function validateDepartureDetails(details) {
     return null;
 }
 
+// Departure details are operational history, not timetable data.
+async function saveDepartureLog(schedule, details, adminUsername = 'admin') {
+    const DepartureLog = getDepartureLogModel();
+    return DepartureLog.create({
+        schedule_id: String(schedule._id),
+        bus_number: schedule.bus_number || '',
+        route_name: schedule.route_name || '',
+        route_number: schedule.route_number || '',
+        admin_username: adminUsername || 'admin',
+        ...details,
+    });
+}
+
 export const getShedulles = async (req, res) => {
     try {
         const shedulles = await shedulle.find().sort({ route_number: 1, departure_time: 1 }).lean();
@@ -69,7 +82,10 @@ export const registerShedulle = async (req, res) => {
             const departureError = validateDepartureDetails(departureDetails);
             if (departureError) return res.status(400).json({ message: departureError });
         }
-        const newShedulle = await shedulle.create({ bus_number, route_name, route_number, assign_driver, departure_time, arrival_time, status, bus_type, price, ...departureDetails });
+        const newShedulle = await shedulle.create({ bus_number, route_name, route_number, assign_driver, departure_time, arrival_time, status, bus_type, price });
+        if (String(status).toLowerCase() === 'departed') {
+            await saveDepartureLog(newShedulle, departureDetails, req.body.admin_username);
+        }
         res.status(201).json({ message: 'Shedulle registered successfully.', shedulle: newShedulle });
     } catch (error) {
         res.status(500).json({ message: 'Error registering shedulle.', error: error.message });
@@ -93,11 +109,14 @@ export const updateShedulle = async (req, res) => {
 
         const updatedSchedule = await shedulle.findByIdAndUpdate(
             req.params.id,
-            { bus_number, route_name, route_number, assign_driver, departure_time, arrival_time, status, bus_type, price, ...departureDetails },
+            { bus_number, route_name, route_number, assign_driver, departure_time, arrival_time, status, bus_type, price },
             { new: true, runValidators: true }
         );
         if (!updatedSchedule) {
             return res.status(404).json({ message: 'Schedule not found.' });
+        }
+        if (String(status).toLowerCase() === 'departed') {
+            await saveDepartureLog(updatedSchedule, departureDetails, req.body.admin_username);
         }
         res.status(200).json({ message: 'Schedule updated successfully.', shedulle: updatedSchedule });
     } catch (error) {
@@ -155,34 +174,12 @@ export const approveStatusUpdate = async (req, res) => {
             const departureError = validateDepartureDetails(details);
             if (departureError) return res.status(400).json({ message: departureError });
 
-            // Add departure fields to the schedule update
-            updateFields.actual_departure_date  = details.actual_departure_date;
-            updateFields.actual_departure_time  = details.actual_departure_time;
-            updateFields.is_delayed             = details.is_delayed;
-            updateFields.delay_minutes          = details.delay_minutes;
-            updateFields.delay_reason           = details.delay_reason;
-            updateFields.other_delay_reason     = details.other_delay_reason;
-
-            // Save admin departure feedback to the SEPARATE departureLogsDB database
-            // (errors here will surface in the server console and response)
-            const DepartureLog = getDepartureLogModel();
-            const savedLog = await DepartureLog.create({
-                schedule_id:            String(schedule._id),
-                bus_number:             schedule.bus_number   || '',
-                route_name:             schedule.route_name   || '',
-                route_number:           schedule.route_number || '',
-                admin_username:         req.body.admin_username || 'admin',
-                actual_departure_date:  details.actual_departure_date,
-                actual_departure_time:  details.actual_departure_time,
-                is_delayed:             details.is_delayed,
-                delay_minutes:          details.delay_minutes,
-                delay_reason:           details.delay_reason,
-                other_delay_reason:     details.other_delay_reason,
-            });
-            console.log('✅ Departure log saved to departureLogsDB, id:', savedLog._id);
+            // Save the detailed departure record separately from the schedule.
+            const savedLog = await saveDepartureLog(schedule, details, req.body.admin_username);
+            console.log('Departure log saved to departure_logs, id:', savedLog._id);
         }
 
-        // Update the schedule in busSystem with findByIdAndUpdate
+        // Only the schedule status is updated here; departure details stay in departure_logs.
         const updated = await shedulle.findByIdAndUpdate(
             req.params.id,
             { $set: updateFields },

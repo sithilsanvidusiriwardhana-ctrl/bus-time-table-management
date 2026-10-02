@@ -683,6 +683,20 @@ th {
   font-weight: 700;
 }
 
+.passenger-fare-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.passenger-stage-prices-btn {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
 .modal {
   position: fixed;
   inset: 0;

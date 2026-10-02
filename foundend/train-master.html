@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Train Master</title><link rel="stylesheet" href="styles.css" /></head>
+<body class="page-body"><div class="page-shell">
+  <nav class="page-nav"><a href="index.html">Home</a><a href="train-master.html" class="active">Train Master</a><a href="train-dashboard.html">Train dashboard</a></nav>
+  <main class="page-main"><section class="dashboard-shell">
+    <div class="dashboard-header"><div><p class="eyebrow">Signed in as</p><h2>Train Master dashboard</h2></div><button id="logoutBtn" class="btn btn-secondary" type="button">Logout</button></div>
+    <div class="panel-heading"><h3>Train management</h3><p>Add or delete trains, then assign stations and expected times.</p></div>
+    <form id="trainForm" class="schedule-form"><label class="field-group">Train number<input name="train_number" required /></label><label class="field-group">Train name<input name="train_name" required /></label><button class="btn btn-primary" type="submit">Add train</button></form>
+    <h4>Add timetable stop</h4>
+    <form id="stopForm" class="schedule-form"><label class="field-group">Train<select id="timetableTrain" name="train_id" required></select></label><label class="field-group">Station<select id="timetableStation" name="station_id" required></select></label><label class="field-group">Arrival time<input name="arrival_time" type="time" /></label><label class="field-group">Departure time<input name="departure_time" type="time" /></label><button class="btn btn-primary" type="submit">Add stop</button></form>
+    <div class="panel-heading"><h3>Public notices</h3><p>Publish a notice for passengers on the Train Dashboard.</p></div>
+    <form id="noticeForm" class="schedule-form"><label class="field-group">Notice title<input name="title" required /></label><label class="field-group">Notice message<textarea name="message" required></textarea></label><button class="btn btn-primary" type="submit">Publish notice</button></form>
+    <p id="trainMessage" aria-live="polite"></p><div id="trainList"></div>
+  </section></main>
+</div><script src="train.js"></script><script src="portal-auth.js"></script></body></html>
