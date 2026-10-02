@@ -811,7 +811,8 @@ function normalizeContact(input) {
 
 async function handleLogin(event) {
   event.preventDefault();
-  const formData = new FormData(event.target);
+  const form = event.currentTarget;
+  const formData = new FormData(form);
   const username = String(formData.get('username') || '').trim();
   const password = String(formData.get('password') || '').trim();
 
@@ -847,6 +848,16 @@ async function handleLogin(event) {
       role: normalizeRole(verifiedUser?.role),
       name: verifiedUser.displayName || verifiedUser.username
     };
+
+    const requestedRole = form.dataset.portalRole;
+    if (!requestedRole) {
+      setLoginError('Choose a portal before continuing.');
+      return;
+    }
+    if (normalizeRole(requestedRole) !== normalizedUser.role) {
+      setLoginError(`This account does not have ${requestedRole} portal access.`);
+      return;
+    }
 
     if (normalizedUser.role === 'Passenger') {
       state.currentUser = normalizedUser;
