@@ -11,7 +11,9 @@
       <nav class="page-nav" aria-label="Portal navigation">
         <a href="index.html">Home</a>
         <a href="passenger.html">Passenger</a>
-        <a href="driver.html" class="active">Driver</a>
+        <a href="taxi-driver.html">Taxi Driver</a>
+        <a href="driver.html" class="active">Bus Driver</a>
+        <a href="train-dashboard.html">Train Dashboard</a>
         <a href="admin.html">Admin</a>
       </nav>
 
@@ -33,13 +35,41 @@
 
           <div id="adminPanel" class="panel hidden"></div>
           <div id="driverPanel" class="panel hidden">
-            <div class="panel-heading">
-              <h3>Driver schedule board</h3>
-              <p>Review your assigned trips and update the live status.</p>
+            <div class="panel-heading" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <h3>Driver schedule board</h3>
+                <p>Review your assigned trips and update the live status.</p>
+              </div>
+              <button id="openDriverPriceTable" class="btn btn-secondary" type="button" data-action="open-driver-price-modal">Price Table</button>
             </div>
             <div id="driverTrips"></div>
           </div>
           <div id="passengerPanel" class="panel hidden"></div>
+
+          <!-- Driver Price Table Modal -->
+          <div id="driverPriceModal" class="modal hidden" aria-hidden="true">
+            <div class="modal-overlay" data-action="close-driver-price-modal"></div>
+            <section class="modal-content fare-matrix-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="driverPriceTitle">
+              <div class="passenger-timetable-heading">
+                <div>
+                  <p class="eyebrow">Fare & Ticket Guide</p>
+                  <h3 id="driverPriceTitle">Route Price Table</h3>
+                </div>
+                <button class="timetable-close-btn" type="button" data-action="close-driver-price-modal" aria-label="Close price table">×</button>
+              </div>
+
+              <div class="field-group">
+                <label for="driverPriceRouteSelect">Select route</label>
+                <select id="driverPriceRouteSelect" class="form-control">
+                  <option value="">Choose a route</option>
+                </select>
+              </div>
+
+              <div id="driverFareMatrixContainer" class="fare-matrix-wrap" style="margin-top: 1rem;">
+                <p class="helper-text">Select a route to view its stage price matrix.</p>
+              </div>
+            </section>
+          </div>
         </section>
       </main>
     </div>

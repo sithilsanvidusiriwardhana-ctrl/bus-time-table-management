@@ -563,6 +563,63 @@ select {
   color: var(--primary-dark);
 }
 
+.route-timetable {
+  max-width: 520px;
+  margin: 0.8rem 0;
+}
+
+.route-timetable th:first-child {
+  width: 5rem;
+  color: var(--primary-dark);
+}
+
+.route-timetable td {
+  font-variant-numeric: tabular-nums;
+  word-spacing: 0.35rem;
+}
+
+.passenger-route-timetable {
+  margin: 0 0 1.2rem;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid var(--passenger);
+  background: #f8fbff;
+}
+
+.passenger-timetable-dialog {
+  display: grid;
+  gap: 1rem;
+}
+
+.passenger-timetable-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.passenger-timetable-heading h3 {
+  margin: 0;
+}
+
+.timetable-close-btn {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.route-management-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
 .route-group-header {
   margin-bottom: 0.8rem;
 }
@@ -626,6 +683,20 @@ th {
   font-weight: 700;
 }
 
+.passenger-fare-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.passenger-stage-prices-btn {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
 .modal {
   position: fixed;
   inset: 0;
@@ -649,6 +720,31 @@ th {
   max-height: 80vh;
   overflow: auto;
   box-shadow: 0 20px 40px rgba(2,6,23,0.2);
+}
+
+.departure-details-dialog {
+  width: min(560px, calc(100% - 2rem));
+}
+
+.departure-details-dialog h3 {
+  margin: 0 0 1rem;
+}
+
+.departure-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.8rem;
+}
+
+.departure-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.passenger-departures-title {
+  margin: 1.25rem 0 0.5rem;
 }
 
 #priceTable th, #priceTable td { padding: 0.6rem; border-bottom: 1px solid var(--border); }
@@ -739,3 +835,518 @@ th {
     padding-top: 1rem;
   }
 }
+
+/* ─── Price Table & Fare Matrix Styles (Excel-style matching user screenshot) ─── */
+
+.fare-matrix-modal-dialog {
+  max-width: 860px;
+  width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.fare-card-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.panel-card-inner {
+  background: #f8fbff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.section-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.helper-text {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin: 0.35rem 0 0.75rem;
+}
+
+.badge-pill {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.sections-input-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.section-row-item {
+  display: grid;
+  grid-template-columns: 80px 1fr 130px 42px;
+  gap: 0.75rem;
+  align-items: center;
+  background: var(--surface);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.section-index-badge {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--primary-dark);
+  background: #eef6ff;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.section-delete-btn {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid rgba(216, 67, 67, 0.3);
+  border-radius: 6px;
+  height: 36px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.section-delete-btn:hover {
+  background: #fee2e2;
+}
+
+/* Excel-Style Fare Matrix Table */
+.fare-matrix-wrap {
+  overflow-x: auto;
+  margin-top: 0.75rem;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.excel-fare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Calibri, "Segoe UI", Arial, sans-serif;
+  border: 2px solid #2f5597;
+}
+
+.excel-fare-table th,
+.excel-fare-table td {
+  border: 1px solid #8ea9db;
+  padding: 0.6rem 0.85rem;
+  text-align: center;
+  font-size: 0.98rem;
+}
+
+.excel-fare-table thead th {
+  background-color: #2f5597 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  position: relative;
+  text-align: center;
+  user-select: none;
+}
+
+.excel-fare-table thead th.first-col-header {
+  text-align: left;
+  background-color: #244275 !important;
+}
+
+.excel-fare-table thead th .excel-filter-caret {
+  display: inline-block;
+  margin-left: 0.45rem;
+  font-size: 0.7rem;
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.excel-fare-table tbody tr.row-even {
+  background-color: #d9e1f2;
+}
+
+.excel-fare-table tbody tr.row-odd {
+  background-color: #ffffff;
+}
+
+.excel-fare-table tbody td.row-header {
+  font-weight: 700;
+  text-align: left;
+  background-color: #b4c6e7 !important;
+  color: #1f3864;
+  white-space: nowrap;
+}
+
+.excel-fare-table tbody td.fare-cell {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #1a2a40;
+  transition: all 0.15s ease;
+}
+
+.excel-fare-table tbody td.fare-cell:hover {
+  background-color: #fff2cc !important;
+  color: #b25900;
+  cursor: pointer;
+  transform: scale(1.02);
+}
+
+.excel-fare-table tbody td.fare-cell.highlight-fare {
+  background-color: #ffe699 !important;
+  color: #b25900 !important;
+  box-shadow: inset 0 0 0 2px #d56800;
+}
+
+.excel-fare-table tbody td.empty-cell {
+  background-color: rgba(240, 243, 248, 0.4);
+  color: transparent;
+}
+
+/* Master Fare Rules Table */
+.fare-rules-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fare-rules-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  padding: 0.65rem 0.8rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.fare-rules-table td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.fare-rules-table input[type="number"] {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+/* Quick Fare Calculator */
+.calc-result-badge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.calc-fare-card {
+  flex: 1;
+  min-width: 130px;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.calc-fare-card.normal {
+  border-top: 4px solid #1e88e5;
+}
+
+.calc-fare-card.semi {
+  border-top: 4px solid #7c3aed;
+}
+
+.calc-fare-card.luxury {
+  border-top: 4px solid #0f766e;
+}
+
+.calc-fare-type {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.calc-fare-amount {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text);
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 768px) {
+  .section-row-item {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+/* ══════════════════════════════════════════
+   TAXI SYSTEM STYLES (DRIVER & PASSENGER)
+   ══════════════════════════════════════════ */
+:root {
+  --taxi: #d97706;
+  --taxi-dark: #b45309;
+  --taxi-bg: #fffbeb;
+  --taxi-border: #fde68a;
+  --taxi-accent: #f59e0b;
+}
+
+.role-badge.taxi-role {
+  background: var(--taxi-bg);
+  color: var(--taxi-dark);
+  border: 1px solid var(--taxi-border);
+}
+
+/* Online / Offline Switch Component */
+.taxi-duty-switch-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.taxi-duty-switch-panel.is-online {
+  border-color: #86efac;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.12);
+}
+
+.taxi-duty-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.taxi-pulse-indicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #94a3b8;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.taxi-duty-switch-panel.is-online .taxi-pulse-indicator {
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25); }
+  50% { box-shadow: 0 0 0 9px rgba(34, 197, 94, 0.08); }
+}
+
+.taxi-switch-toggle {
+  position: relative;
+  display: inline-block;
+  width: 64px;
+  height: 34px;
+}
+
+.taxi-switch-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.taxi-switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #cbd5e1;
+  transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 34px;
+}
+
+.taxi-switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.taxi-switch-toggle input:checked + .taxi-switch-slider {
+  background-color: #22c55e;
+}
+
+.taxi-switch-toggle input:checked + .taxi-switch-slider:before {
+  transform: translateX(30px);
+}
+
+/* Taxi Request Feed Cards */
+.taxi-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.taxi-request-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.taxi-request-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.taxi-route-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #edf2f7;
+}
+
+.taxi-stop-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.taxi-stop-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.taxi-stop-dot.pickup { background: #3b82f6; }
+.taxi-stop-dot.dest { background: #ef4444; }
+
+/* Bids & Offers Cards */
+.driver-bid-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  transition: border-color 0.2s;
+}
+
+.driver-bid-card.accepted {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.driver-bid-card.declined {
+  opacity: 0.6;
+  background: #f8fafc;
+}
+
+.bid-price-tag {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #047857;
+}
+
+.btn-accept-quote {
+  background: #16a34a !important;
+  color: white !important;
+  font-weight: 700;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btn-accept-quote:hover {
+  background: #15803d !important;
+  transform: translateY(-1px);
+}
+
+.btn-delete-quote {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  font-weight: 600;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-delete-quote:hover {
+  background: #fecaca !important;
+}
+
+.taxi-empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 2px dashed #cbd5e1;
+  color: #64748b;
+}
+
+.taxi-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.btn-select-driver:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+#taxiSubmitBookingBtn:hover {
+  background: #166534 !important;
+  transform: translateY(-1px);
+}
+
+.quick-route-chip:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+}
+
+

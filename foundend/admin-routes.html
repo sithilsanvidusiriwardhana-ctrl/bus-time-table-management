@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Route Timetables | Bus Time Table</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-body">
+    <div class="page-shell">
+      <nav class="page-nav" aria-label="Portal navigation">
+        <a href="index.html">Home</a><a href="passenger.html">Passenger</a><a href="driver.html">Driver</a><a href="admin.html">Admin</a>
+      </nav>
+      <main class="page-main admin-layout">
+        <aside class="admin-side-nav" aria-label="Admin management">
+          <h3>Admin tools</h3>
+          <a href="admin-schedules.html">Schedule management</a>
+          <a href="admin-routes.html" class="active">Route timetables</a>
+          <a href="admin-buses.html">Bus management</a>
+          <a href="admin-drivers.html">Driver management</a>
+          <a href="admin-fares.html">Price table</a>
+        </aside>
+        <section id="dashboardSection" class="dashboard-shell">
+          <div class="dashboard-header">
+            <div><p class="eyebrow">Admin workspace</p><h2 id="dashboardTitle">Route timetables</h2></div>
+            <div class="dashboard-actions"><span id="userRoleBadge" class="role-badge">Admin</span><button id="logoutBtn" class="btn btn-secondary" type="button">Logout</button></div>
+          </div>
+          <div id="welcomeCard" class="welcome-card"></div>
+          <div id="adminPanel" class="panel">
+            <div class="panel-heading"><h3>Manage route timetables</h3><p>Set each route's scheduled departure hours and minutes.</p></div>
+            <form id="routeForm" class="schedule-form">
+              <div class="field-group"><label for="routeNumberInput">Route number</label><input id="routeNumberInput" name="routeNumber" type="text" placeholder="e.g. 12A" required /></div>
+              <div class="field-group"><label for="routeNameInput">Route name</label><input id="routeNameInput" name="routeName" type="text" placeholder="Origin - destination" required /></div>
+              <div class="field-group"><label for="routeTimesInput">Departure times</label><input id="routeTimesInput" name="departureTimes" type="text" placeholder="05:00, 05:10, 06:00" required /></div>
+              <button id="routeSubmitBtn" class="btn btn-primary" type="submit">Add route</button>
+            </form>
+            <p id="routeMessage" class="form-success" role="status"></p>
+            <div class="table-wrap"><div id="routeManagementList"></div></div>
+          </div>
+          <div id="driverPanel" class="panel hidden"></div><div id="passengerPanel" class="panel hidden"></div>
+
+          <!-- Section & Price Table Modal for Route -->
+          <div id="routePriceModal" class="modal hidden" aria-hidden="true">
+            <div class="modal-overlay" data-action="close-route-price-modal"></div>
+            <section class="modal-content fare-matrix-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="routePriceModalTitle">
+              <div class="passenger-timetable-heading">
+                <div>
+                  <p class="eyebrow" id="routePriceModalSubtitle">Route Pricing & Sections</p>
+                  <h3 id="routePriceModalTitle">Section and Price Management</h3>
+                </div>
+                <button class="timetable-close-btn" type="button" data-action="close-route-price-modal" aria-label="Close price modal">×</button>
+              </div>
+
+              <div class="route-price-editor-body">
+                <div class="panel-card-inner">
+                  <div class="section-manager-header">
+                    <h4>Road Sections / Sectors</h4>
+                    <button id="addSectionBtn" class="btn btn-secondary btn-sm" type="button">+ Add section</button>
+                  </div>
+                  <p class="helper-text">Add sections in order from origin to destination with cumulative kilometers. Fares calculate automatically based on the master price table.</p>
+                  <div id="routeSectionsContainer" class="sections-input-list"></div>
+                </div>
+
+                <div class="panel-card-inner" style="margin-top: 1rem;">
+                  <div class="section-manager-header">
+                    <h4>Calculated Route Price Table</h4>
+                    <span class="badge-pill">Live Price Matrix</span>
+                  </div>
+                  <p class="helper-text">This table shows stage-to-stage payment prices for passengers. You can customize section prices directly or rely on the master distance price table.</p>
+                  <div class="fare-matrix-wrap" id="adminFareMatrixPreview"></div>
+                </div>
+
+                <div class="modal-action-row" style="margin-top: 1.25rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                  <button id="closeRoutePriceModalBtn" class="btn btn-secondary" type="button" data-action="close-route-price-modal">Cancel</button>
+                  <button id="saveRoutePriceBtn" class="btn btn-primary" type="button">Save sections & prices</button>
+                </div>
+                <p id="routePriceSaveMessage" class="form-success" role="status" style="margin-top: 0.5rem;"></p>
+              </div>
+            </section>
+          </div>
+
+        </section>
+      </main>
+    </div>
+    <script src="otp-utils.js"></script><script src="app.js"></script><script src="portal-auth.js"></script>
+  </body>
+</html>

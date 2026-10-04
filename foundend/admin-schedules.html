@@ -19,7 +19,10 @@
         <aside class="admin-side-nav" aria-label="Admin management">
           <h3>Admin tools</h3>
           <a href="admin-schedules.html" class="active">Schedule management</a>
+          <a href="admin-routes.html">Route timetables</a>
+          <a href="admin-buses.html">Bus management</a>
           <a href="admin-drivers.html">Driver management</a>
+          <a href="admin-fares.html">Price table</a>
         </aside>
 
         <section id="dashboardSection" class="dashboard-shell">
@@ -48,11 +51,11 @@
             </div>
 
             <form id="scheduleForm" class="schedule-form">
-              <div class="field-group"><label for="route">Route name</label><input id="route" name="route" type="text" required /></div>
-              <div class="field-group"><label for="routeNumber">Route number</label><input id="routeNumber" name="routeNumber" type="text" placeholder="e.g. 12A" required /></div>
-              <div class="field-group"><label for="busNumber">Bus number</label><input id="busNumber" name="busNumber" type="text" required /></div>
+              <div class="field-group"><label for="routeNumber">Route</label><select id="routeNumber" name="routeNumber" required><option value="">— Select a route —</option></select></div>
+              <input id="route" name="route" type="hidden" />
+              <div class="field-group"><label for="busNumber">Bus</label><select id="busNumber" name="busNumber" required disabled><option value="">— Select a route first —</option></select></div>
               <div class="field-group"><label for="driverName">Assign driver</label><select id="driverName" name="driverName" required><option value="">— Select a driver —</option></select></div>
-              <div class="field-group"><label for="departureTime">Departure</label><input id="departureTime" name="departureTime" type="time" required /></div>
+              <div class="field-group"><label for="departureTime">Departure</label><select id="departureTime" name="departureTime" required disabled><option value="">— Select a route first —</option></select></div>
               <div class="field-group"><label for="arrivalTime">Arrival</label><input id="arrivalTime" name="arrivalTime" type="time" required /></div>
               <div class="field-group"><label for="status">Status</label><select id="status" name="status"><option value="On Time">On Time</option><option value="Delayed">Delayed</option><option value="Departed">Departed</option></select></div>
               <div class="field-group"><label for="busType">Bus type</label><select id="busType" name="busType"><option value="Normal">Normal</option><option value="Semi Luxiri">Semi Luxiri</option><option value="Luxire">Luxire</option></select></div>
@@ -60,6 +63,60 @@
             </form>
 
             <div class="table-wrap"><div id="routeTimetableGroups"></div></div>
+          </div>
+          <div id="departureDetailsModal" class="modal hidden" aria-hidden="true">
+            <div class="modal-overlay"></div>
+            <section class="modal-content departure-details-dialog" role="dialog" aria-modal="true" aria-labelledby="departureDetailsTitle">
+              <h3 id="departureDetailsTitle">Record bus departure</h3>
+              <form id="departureDetailsForm">
+                <div class="departure-detail-grid">
+                  <div class="field-group">
+                    <label for="departureBusNumber">Bus number</label>
+                    <input id="departureBusNumber" type="text" readonly />
+                  </div>
+                  <div class="field-group">
+                    <label for="actualDepartureDate">Departure date</label>
+                    <input id="actualDepartureDate" type="date" required />
+                  </div>
+                  <div class="field-group">
+                    <label for="actualDepartureTime">Departure time</label>
+                    <input id="actualDepartureTime" type="time" required />
+                  </div>
+                  <div class="field-group">
+                    <label for="departureIsDelayed">Is the bus delayed?</label>
+                    <select id="departureIsDelayed">
+                      <option value="false">No</option>
+                      <option value="true">Yes</option>
+                    </select>
+                  </div>
+                </div>
+                <div id="departureDelayFields" class="departure-detail-grid hidden">
+                  <div class="field-group">
+                    <label for="departureDelayMinutes">Delay duration (minutes)</label>
+                    <input id="departureDelayMinutes" type="number" min="1" step="1" />
+                  </div>
+                  <div class="field-group">
+                    <label for="departureDelayReason">Reason for delay</label>
+                    <select id="departureDelayReason">
+                      <option value="">Choose a reason</option>
+                      <option value="traffic">Traffic</option>
+                      <option value="slow_driving">Slow driving</option>
+                      <option value="accident">Accident</option>
+                      <option value="breakdown">Breakdown</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div id="departureOtherReasonFields" class="field-group hidden">
+                    <label for="departureOtherReason">Other reason</label>
+                    <input id="departureOtherReason" type="text" maxlength="200" />
+                  </div>
+                </div>
+                <div class="departure-detail-actions">
+                  <button id="cancelDepartureDetails" class="btn btn-secondary" type="button">Cancel</button>
+                  <button class="btn btn-primary" type="submit">Save departure</button>
+                </div>
+              </form>
+            </section>
           </div>
           <div id="driverPanel" class="panel hidden"></div>
           <div id="passengerPanel" class="panel hidden"></div>

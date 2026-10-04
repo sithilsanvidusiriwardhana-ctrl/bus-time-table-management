@@ -5,44 +5,7 @@ const defaultState = {
   pendingOtp: null,
   pendingUser: null,
   pendingAction: null,
-  schedules: [
-    {
-      id: 1,
-      route: 'Central - Airport',
-      routeNumber: '12A',
-      busNumber: 'B-101',
-      driverName: 'John',
-      departureTime: '08:00',
-      arrivalTime: '09:15',
-      status: 'On Time',
-      type: 'Normal',
-      priceBase: 1430
-    },
-    {
-      id: 2,
-      route: 'North Town - Market',
-      routeNumber: '8C',
-      busNumber: 'B-205',
-      driverName: 'Sara',
-      departureTime: '10:30',
-      arrivalTime: '11:45',
-      status: 'Delayed',
-      type: 'Semi Luxiri',
-      priceBase: 1660
-    },
-    {
-      id: 3,
-      route: 'Hill View - City Center',
-      routeNumber: '12A',
-      busNumber: 'B-309',
-      driverName: 'John',
-      departureTime: '13:00',
-      arrivalTime: '14:00',
-      status: 'Departed',
-      type: 'Luxire',
-      priceBase: 1970
-    }
-  ]
+  schedules: []
 };
 
 let state = loadState();
@@ -50,11 +13,28 @@ if (state.currentUser) {
   state.currentUser.role = normalizeRole(state.currentUser.role);
 }
 state.databaseDrivers = null;
+state.databaseRoutes = [];
+state.databaseBuses = [];
+state.fareRules = [];
+state.currentEditingRoutePrice = null;
+state.adminSelectedFareRouteId = null;
 let editingScheduleId = null;
+let editingRouteId = null;
+let editingBusId = null;
+let pendingDepartureOperation = null;
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[character]);
+}
 
 function isValidUser(user, users = defaultState.users) {
   if (!user || typeof user !== 'object') {
     return false;
+  }
+  if (user.username && user.role) {
+    return true;
   }
 
   const storedUsername = String(user.username || user.name || '').toLowerCase();
@@ -102,6 +82,10 @@ function getScheduleById(id) {
 
 function getRouteNumber(schedule) {
   return String(schedule?.routeNumber || '').trim() || 'General';
+}
+
+function isDepartedSchedule(schedule) {
+  return String(schedule?.status || '').trim().toLowerCase() === 'departed';
 }
 
 function getRouteLabel(schedule) {
@@ -172,6 +156,22 @@ function setOtpMessage(message, isError = false) {
     otpMessage.textContent = message;
   }
 }
+async function sendEmailOTP() {
+    const email = document.getElementById('emailInput').value;
+
+    const response = await fetch('http://localhost:8000/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+        alert('OTP sent successfully to your email.');
+    } else {
+        alert('Failed to send OTP. Please try again.');
+    }
+}
 
 function clearOtpState() {
   state.pendingOtp = null;
@@ -218,7 +218,10 @@ function normalizeRole(role) {
   return {
     admin: 'Admin',
     driver: 'Driver',
-    passenger: 'Passenger'
+    passenger: 'Passenger',
+    'train master': 'Train Master',
+    'taxi driver': 'Taxi Driver',
+    taxi: 'Taxi Driver'
   }[roleName] || role;
 }
 
@@ -230,6 +233,10 @@ function getRolePage(role) {
       return 'driver.html';
     case 'Passenger':
       return 'passenger.html';
+    case 'Train Master':
+      return 'train-master.html';
+    case 'Taxi Driver':
+      return 'taxi-driver.html';
     default:
       return 'index.html';
   }
@@ -240,6 +247,8 @@ function isAllowedRolePage(role, page) {
   if (normalizedRole === 'Admin') {
     return ['admin.html', 'admin-drivers.html', 'admin-schedules.html'].includes(page);
   }
+  if (normalizedRole === 'Train Master') return page === 'train-master.html';
+  if (normalizedRole === 'Taxi Driver') return page === 'taxi-driver.html';
   return page === getRolePage(normalizedRole);
 }
 
@@ -275,6 +284,98 @@ function render() {
     priceModal.setAttribute('aria-hidden', !isPassenger ? 'true' : 'false');
     if (!isPassenger) closePriceModal();
   }
+  const timetableModal = document.getElementById('passengerTimetableModal');
+  if (timetableModal && state.currentUser?.role !== 'Passenger') closePassengerTimetable();
+}
+
+function toggleDepartureDelayFields() {
+  const delayedSelect = document.getElementById('departureIsDelayed');
+  const delayFields = document.getElementById('departureDelayFields');
+  const delayMinutes = document.getElementById('departureDelayMinutes');
+  const delayReason = document.getElementById('departureDelayReason');
+  const isDelayed = delayedSelect?.value === 'true';
+  if (delayFields) delayFields.classList.toggle('hidden', !isDelayed);
+  if (delayMinutes) delayMinutes.required = isDelayed;
+  if (delayReason) delayReason.required = isDelayed;
+  toggleDepartureOtherReason();
+}
+
+function toggleDepartureOtherReason() {
+  const reasonSelect = document.getElementById('departureDelayReason');
+  const otherFields = document.getElementById('departureOtherReasonFields');
+  const otherReason = document.getElementById('departureOtherReason');
+  const isOther = reasonSelect?.value === 'other' && document.getElementById('departureIsDelayed')?.value === 'true';
+  if (otherFields) otherFields.classList.toggle('hidden', !isOther);
+  if (otherReason) otherReason.required = isOther;
+}
+
+function openDepartureDetailsModal(operation) {
+  const modal = document.getElementById('departureDetailsModal');
+  const form = document.getElementById('departureDetailsForm');
+  if (!modal || !form) return;
+
+  pendingDepartureOperation = operation;
+  form.reset();
+  const now = new Date();
+  const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+  const existing = operation.departureDetails || {};
+  document.getElementById('departureBusNumber').value = operation.busNumber || '';
+  document.getElementById('actualDepartureDate').value = existing.actual_departure_date || localNow.slice(0, 10);
+  document.getElementById('actualDepartureTime').value = existing.actual_departure_time || localNow.slice(11, 16);
+  document.getElementById('departureIsDelayed').value = existing.is_delayed ? 'true' : 'false';
+  document.getElementById('departureDelayMinutes').value = existing.delay_minutes || '';
+  document.getElementById('departureDelayReason').value = existing.delay_reason || '';
+  document.getElementById('departureOtherReason').value = existing.other_delay_reason || '';
+  toggleDepartureDelayFields();
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  document.getElementById('actualDepartureDate').focus();
+}
+
+function closeDepartureDetailsModal() {
+  const modal = document.getElementById('departureDetailsModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  pendingDepartureOperation = null;
+}
+
+function getDepartureDetailsFromForm() {
+  const isDelayed = document.getElementById('departureIsDelayed').value === 'true';
+  return {
+    actual_departure_date: document.getElementById('actualDepartureDate').value,
+    actual_departure_time: document.getElementById('actualDepartureTime').value,
+    is_delayed: isDelayed,
+    delay_minutes: isDelayed ? Number(document.getElementById('departureDelayMinutes').value) : 0,
+    delay_reason: isDelayed ? document.getElementById('departureDelayReason').value : '',
+    other_delay_reason: isDelayed ? document.getElementById('departureOtherReason').value.trim() : ''
+  };
+}
+
+async function handleDepartureDetailsSubmit(event) {
+  event.preventDefault();
+  if (!pendingDepartureOperation) return;
+
+  const operation = pendingDepartureOperation;
+  const departureDetails = getDepartureDetailsFromForm();
+  try {
+    if (operation.type === 'schedule') {
+      await saveSchedulePayload({ ...operation.schedulePayload, ...departureDetails }, operation.scheduleId);
+      return;
+    }
+
+    const response = await fetch(`/api/shedulle/${encodeURIComponent(operation.scheduleId)}/status-approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(departureDetails)
+    });
+    const result = await readApiResponse(response);
+    if (!response.ok) throw new Error(result.message || 'Unable to approve departure status.');
+    closeDepartureDetailsModal();
+    await loadSchedulesFromDatabase();
+  } catch (error) {
+    alert(error.message || 'Unable to save departure details.');
+  }
 }
 
 function getUserDisplayName(user) {
@@ -304,7 +405,17 @@ function renderDashboard() {
     loginSection.classList.add('hidden');
   }
   dashboardSection.classList.remove('hidden');
-  dashboardTitle.textContent = `${state.currentUser.role} dashboard`;
+  const page = window.location.pathname.split('/').pop();
+  const adminPageTitles = {
+    'admin.html': 'Admin dashboard',
+    'admin-schedules.html': 'Schedule management',
+    'admin-routes.html': 'Route timetables',
+    'admin-buses.html': 'Bus management',
+    'admin-drivers.html': 'Driver management',
+  };
+  dashboardTitle.textContent = state.currentUser.role === 'Admin'
+    ? adminPageTitles[page] || 'Admin dashboard'
+    : `${state.currentUser.role} dashboard`;
   userRoleBadge.textContent = state.currentUser.role;
   userRoleBadge.style.background = state.currentUser.role === 'Admin' ? 'var(--admin)' : state.currentUser.role === 'Driver' ? 'var(--driver)' : 'var(--passenger)';
 
@@ -338,17 +449,23 @@ function renderAdminPanel() {
     if (currentVal) driverSelect.value = currentVal;
   }
 
+  populateScheduleRouteOptions();
+  populateBusRouteOptions();
+  renderRouteManagement();
+  renderBusManagement();
+
   const totalSchedules = document.getElementById('totalSchedules');
   const totalDrivers = document.getElementById('totalDrivers');
   const activeRoutes = document.getElementById('activeRoutes');
-  if (totalSchedules) totalSchedules.textContent = state.schedules.length;
+  const activeSchedules = state.schedules.filter((item) => !isDepartedSchedule(item));
+  if (totalSchedules) totalSchedules.textContent = activeSchedules.length;
   if (totalDrivers) totalDrivers.textContent = Array.isArray(state.databaseDrivers) ? state.databaseDrivers.length : 0;
-  if (activeRoutes) activeRoutes.textContent = state.schedules.filter((item) => item.status !== 'Departed').length;
+  if (activeRoutes) activeRoutes.textContent = activeSchedules.length;
   renderDriverAccountsList();
 
   if (!timetableGroups) return;
 
-  const groupedSchedules = groupSchedulesByRoute(state.schedules);
+  const groupedSchedules = groupSchedulesByRoute(activeSchedules);
 
   if (!groupedSchedules.length) {
     timetableGroups.innerHTML = '<p>No timetable entries yet.</p>';
@@ -400,6 +517,93 @@ function renderAdminPanel() {
     .join('');
 }
 
+function populateScheduleRouteOptions() {
+  const routeSelect = document.getElementById('routeNumber');
+  if (!routeSelect) return;
+  const selectedRoute = routeSelect.value;
+  routeSelect.innerHTML = '<option value="">— Select a route —</option>' + state.databaseRoutes
+    .map((route) => `<option value="${escapeHtml(route.route_number)}">${escapeHtml(route.route_number)} · ${escapeHtml(route.route_name)}</option>`)
+    .join('');
+  if (state.databaseRoutes.some((route) => route.route_number === selectedRoute)) routeSelect.value = selectedRoute;
+  populateScheduleChoices();
+}
+
+function populateScheduleChoices(selectedBus = '', selectedDeparture = '') {
+  const routeSelect = document.getElementById('routeNumber');
+  const busSelect = document.getElementById('busNumber');
+  const departureSelect = document.getElementById('departureTime');
+  const routeName = document.getElementById('route');
+  if (!routeSelect || !busSelect || !departureSelect) return;
+  const route = state.databaseRoutes.find((item) => item.route_number === routeSelect.value);
+  if (routeName) routeName.value = route?.route_name || '';
+  const buses = state.databaseBuses.filter((bus) => bus.route_number === route?.route_number);
+  busSelect.innerHTML = `<option value="">${route ? '— Select a bus —' : '— Select a route first —'}</option>` +
+    buses.map((bus) => `<option value="${escapeHtml(bus.bus_number)}">${escapeHtml(bus.bus_number)} · ${escapeHtml(bus.bus_type)}</option>`).join('');
+  busSelect.disabled = !route || !buses.length;
+  if (buses.some((bus) => bus.bus_number === selectedBus)) busSelect.value = selectedBus;
+  const times = route?.departure_times || [];
+  departureSelect.innerHTML = `<option value="">${route ? '— Select a departure —' : '— Select a route first —'}</option>` +
+    times.map((time) => `<option value="${escapeHtml(time)}">${escapeHtml(time)}</option>`).join('');
+  departureSelect.disabled = !route || !times.length;
+  if (times.includes(selectedDeparture)) departureSelect.value = selectedDeparture;
+}
+
+function populateBusRouteOptions(selectedRoute = '') {
+  const routeSelect = document.getElementById('busRouteInput');
+  if (!routeSelect) return;
+  const currentRoute = selectedRoute || routeSelect.value;
+  routeSelect.innerHTML = '<option value="">— Select a route —</option>' + state.databaseRoutes
+    .map((route) => `<option value="${escapeHtml(route.route_number)}">${escapeHtml(route.route_number)} · ${escapeHtml(route.route_name)}</option>`)
+    .join('');
+  if (state.databaseRoutes.some((route) => route.route_number === currentRoute)) routeSelect.value = currentRoute;
+}
+
+function renderRouteManagement() {
+  const list = document.getElementById('routeManagementList');
+  if (!list) return;
+  if (!state.databaseRoutes.length) {
+    list.innerHTML = '<p>No routes registered yet.</p>';
+    return;
+  }
+  list.innerHTML = state.databaseRoutes.map((route) => {
+    const hourGroups = new Map();
+    (route.departure_times || []).forEach((time) => {
+      const [hour, minute] = time.split(':');
+      if (!hourGroups.has(hour)) hourGroups.set(hour, []);
+      hourGroups.get(hour).push(minute);
+    });
+    const timetableRows = [...hourGroups.entries()].map(([hour, minutes]) => `
+      <tr><th>${escapeHtml(hour)}</th><td>${minutes.map((minute) => `[${escapeHtml(minute)}]`).join(' ')}</td></tr>
+    `).join('');
+    return `
+      <section class="route-group-card">
+        <div class="route-group-header"><h4 class="route-group-title">Route ${escapeHtml(route.route_number)}</h4><p class="route-summary">${escapeHtml(route.route_name)}</p></div>
+        <table class="route-timetable"><thead><tr><th>Hours</th><th>Minutes</th></tr></thead><tbody>${timetableRows}</tbody></table>
+        <div class="route-management-actions">
+          <button class="action-btn edit-btn" data-action="edit-route" data-id="${escapeHtml(route._id)}">Edit</button>
+          <button class="action-btn" style="background:#e0f2fe; color:#0369a1;" data-action="manage-fares" data-id="${escapeHtml(route._id)}">Price table & Sections</button>
+          <button class="action-btn delete-btn" data-action="delete-route" data-id="${escapeHtml(route._id)}">Delete</button>
+        </div>
+      </section>`;
+  }).join('');
+}
+
+function renderBusManagement() {
+  const list = document.getElementById('busManagementList');
+  if (!list) return;
+  if (!state.databaseBuses.length) {
+    list.innerHTML = '<p>No buses registered yet.</p>';
+    return;
+  }
+  list.innerHTML = `
+    <table><thead><tr><th>Bus</th><th>Route</th><th>Type</th><th>Actions</th></tr></thead>
+      <tbody>${state.databaseBuses.map((bus) => {
+        const route = state.databaseRoutes.find((item) => item.route_number === bus.route_number);
+        return `<tr><td>${escapeHtml(bus.bus_number)}</td><td>${escapeHtml(bus.route_number)} · ${escapeHtml(route?.route_name || '')}</td><td>${escapeHtml(bus.bus_type)}</td>
+          <td><button class="action-btn edit-btn" data-action="edit-bus" data-id="${escapeHtml(bus._id)}">Edit</button><button class="action-btn delete-btn" data-action="delete-bus" data-id="${escapeHtml(bus._id)}">Remove</button></td></tr>`;
+      }).join('')}</tbody></table>`;
+}
+
 function renderDriverPanel() {
   const driverTrips = document.getElementById('driverTrips');
   if (!driverTrips || state.currentUser?.role !== 'Driver') return;
@@ -408,6 +612,7 @@ function renderDriverPanel() {
   const currentDisplayName = String(state.currentUser.displayName || state.currentUser.name || '').trim().toLowerCase();
 
   const matchingTrips = state.schedules.filter((trip) => {
+    if (isDepartedSchedule(trip)) return false;
     const assignedUsername = String(trip.assignedDriverUsername || '').trim().toLowerCase();
     if (assignedUsername) return assignedUsername === currentUsername;
     const tripDriver = String(trip.driverName || '').trim().toLowerCase();
@@ -444,10 +649,24 @@ function renderPassengerPanel() {
   const passengerTrips = document.getElementById('passengerTrips');
   if (!passengerTrips || state.currentUser?.role !== 'Passenger') return;
 
+  const routeSelect = document.getElementById('passengerRouteSelect');
+  const selectedRouteNumber = routeSelect?.value || '';
+  if (routeSelect) {
+    routeSelect.innerHTML = '<option value="">All routes</option>' + state.databaseRoutes
+      .map((route) => `<option value="${escapeHtml(route.route_number)}">${escapeHtml(route.route_number)} · ${escapeHtml(route.route_name)}</option>`)
+      .join('');
+    if (state.databaseRoutes.some((route) => route.route_number === selectedRouteNumber)) {
+      routeSelect.value = selectedRouteNumber;
+    }
+  }
+
+  renderPassengerRouteTimetable(selectedRouteNumber);
+
   const searchInput = document.getElementById('searchRoute').value.toLowerCase();
   const statusFilter = document.getElementById('statusFilter').value;
 
   const filteredTrips = state.schedules.filter((trip) => {
+    if (isDepartedSchedule(trip)) return false;
     const matchesSearch = trip.route.toLowerCase().includes(searchInput) || getRouteNumber(trip).toLowerCase().includes(searchInput);
     const matchesStatus = statusFilter === 'All' || trip.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -492,7 +711,12 @@ function renderPassengerPanel() {
                         <td>${trip.departureTime}</td>
                         <td>${trip.arrivalTime}</td>
                         <td><span class="status-pill ${getStatusClass(trip.status)}">${trip.status}</span></td>
-                        <td><button class="price-btn" data-action="price" data-id="${trip.id}">${formatCurrency(trip.priceBase || 1200)}</button></td>
+                        <td>
+                          <div class="passenger-fare-actions">
+                          <button class="price-btn" data-action="price" data-id="${trip.id}">${formatCurrency(trip.priceBase || 1200)}</button>
+                          <button class="action-btn passenger-stage-prices-btn" data-action="view-route-fares" data-route="${escapeHtml(trip.routeNumber)}">Stage prices</button>
+                          </div>
+                        </td>
                       </tr>
                     `
                   )
@@ -504,6 +728,52 @@ function renderPassengerPanel() {
       `
     )
     .join('');
+}
+
+function renderPassengerRouteTimetable(routeNumber) {
+  const timetable = document.getElementById('passengerRouteTimetable');
+  if (!timetable) return;
+  if (!routeNumber) {
+    timetable.innerHTML = '<p>Select a route to view its timetable.</p>';
+    return;
+  }
+  const route = state.databaseRoutes.find((item) => item.route_number === routeNumber);
+  if (!route) {
+    timetable.innerHTML = '<p>This route timetable is unavailable.</p>';
+    return;
+  }
+  const hourGroups = new Map();
+  (route.departure_times || []).forEach((time) => {
+    const [hour, minute] = time.split(':');
+    if (!hourGroups.has(hour)) hourGroups.set(hour, []);
+    hourGroups.get(hour).push(minute);
+  });
+  const rows = [...hourGroups.entries()].map(([hour, minutes]) => `
+    <tr><th scope="row">${escapeHtml(hour)}</th><td>${minutes.map((minute) => `[${escapeHtml(minute)}]`).join(' ')}</td></tr>
+  `).join('');
+  const departedTrips = state.schedules.filter((trip) => getRouteNumber(trip) === routeNumber && isDepartedSchedule(trip));
+  const departureRows = departedTrips.length
+    ? departedTrips.map((trip) => {
+        const actualDeparture = [trip.actualDepartureDate, trip.actualDepartureTime].filter(Boolean).join(' ') || 'Details unavailable';
+        const delay = trip.isDelayed ? `${escapeHtml(trip.delayMinutes)} minutes` : 'No delay';
+        const reasons = {
+          traffic: 'Traffic',
+          slow_driving: 'Slow driving',
+          accident: 'Accident',
+          breakdown: 'Breakdown',
+          other: 'Other'
+        };
+        const reason = trip.isDelayed
+          ? trip.otherDelayReason || reasons[trip.delayReason] || trip.delayReason || 'Not provided'
+          : '—';
+        return `<tr><td>${escapeHtml(trip.busNumber)}</td><td>${escapeHtml(trip.departureTime)}</td><td>${escapeHtml(actualDeparture)}</td><td>${delay}</td><td>${escapeHtml(reason)}</td></tr>`;
+      }).join('')
+    : '<tr><td colspan="5">No departed buses recorded for this route.</td></tr>';
+  timetable.innerHTML = `
+    <div class="route-group-header"><h4 class="route-group-title">Route ${escapeHtml(route.route_number)}</h4><p class="route-summary">${escapeHtml(route.route_name)}</p></div>
+    <table class="route-timetable"><thead><tr><th>Hours</th><th>Minutes</th></tr></thead><tbody>${rows}</tbody></table>
+    <h4 class="passenger-departures-title">Bus departure updates</h4>
+    <div class="table-wrap"><table class="route-timetable"><thead><tr><th>Bus</th><th>Scheduled</th><th>Actual departure</th><th>Delay</th><th>Reason</th></tr></thead><tbody>${departureRows}</tbody></table></div>`;
 }
 
 function getStatusClass(status) {
@@ -607,7 +877,10 @@ async function handleLogin(event) {
     window.location.href = 'otp.html';
 
   } catch (error) {
-    setLoginError(error.message || 'Server error during login.');
+    const message = error instanceof TypeError
+      ? 'Cannot reach the login API. Open the app at http://localhost:8000 or use its deployed website URL.'
+      : error.message || 'Server error during login.';
+    setLoginError(message);
   }
 }
 
@@ -729,42 +1002,184 @@ async function handleScheduleSubmit(event) {
     return;
   }
 
-  try {
-    // Send data to your MongoDB backend route
-    const response = await fetch('/api/shedulle/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        bus_number: newSchedule.busNumber,
-        route_name: newSchedule.route,
-        route_number: newSchedule.routeNumber,
-        assign_driver: newSchedule.assignedDriverUsername,
-        departure_time: newSchedule.departureTime,
-        arrival_time: newSchedule.arrivalTime,
-        status: newSchedule.status,
-        bus_type: newSchedule.type
-      })
+  const schedulePayload = {
+    bus_number: newSchedule.busNumber,
+    route_name: newSchedule.route,
+    route_number: newSchedule.routeNumber,
+    assign_driver: newSchedule.assignedDriverUsername,
+    departure_time: newSchedule.departureTime,
+    arrival_time: newSchedule.arrivalTime,
+    status: newSchedule.status,
+    bus_type: newSchedule.type
+  };
+
+  if (newSchedule.status === 'Departed') {
+    const schedule = editingScheduleId ? getScheduleById(editingScheduleId) : null;
+    openDepartureDetailsModal({
+      type: 'schedule',
+      scheduleId: editingScheduleId,
+      schedulePayload,
+      busNumber: newSchedule.busNumber,
+      departureDetails: schedule ? {
+        actual_departure_date: schedule.actualDepartureDate,
+        actual_departure_time: schedule.actualDepartureTime,
+        is_delayed: schedule.isDelayed,
+        delay_minutes: schedule.delayMinutes,
+        delay_reason: schedule.delayReason,
+        other_delay_reason: schedule.otherDelayReason
+      } : null
     });
+    return;
+  }
 
-    const result = await response.json();
+  await saveSchedulePayload(schedulePayload, editingScheduleId);
+}
 
-    if (!response.ok) {
-      throw new Error(result.message || result.error || 'Failed to save schedule to database');
-    }
-
-    // Update local app state only after successful database save
-    if (editingScheduleId) {
-      state.schedules = state.schedules.map((item) => (item.id === editingScheduleId ? newSchedule : item));
-    } else {
-      state.schedules.unshift(newSchedule);
-    }
-
-    saveState();
+async function saveSchedulePayload(schedulePayload, scheduleId) {
+  try {
+    const response = await fetch(
+      scheduleId ? `/api/shedulle/${encodeURIComponent(scheduleId)}` : '/api/shedulle/register',
+      {
+        method: scheduleId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(schedulePayload)
+      }
+    );
+    const result = await readApiResponse(response);
+    if (!response.ok) throw new Error(result.message || result.error || 'Failed to save schedule to database.');
     resetForm();
-    render();
+    closeDepartureDetailsModal();
+    await loadSchedulesFromDatabase();
   } catch (error) {
     console.error('Error saving schedule:', error);
     alert(error.message || 'Unable to save schedule to MongoDB.');
+  }
+}
+
+function setManagementMessage(id, text, isError = false) {
+  const message = document.getElementById(id);
+  if (!message) return;
+  message.textContent = text;
+  message.classList.toggle('form-error', isError);
+  message.classList.toggle('form-success', !isError);
+}
+
+async function handleRouteSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const departure_times = [...new Set(String(formData.get('departureTimes') || '')
+    .split(/[\s,;]+/)
+    .map((time) => time.trim())
+    .filter(Boolean))].sort();
+  const payload = {
+    route_number: String(formData.get('routeNumber') || '').trim(),
+    route_name: String(formData.get('routeName') || '').trim(),
+    departure_times,
+  };
+  const wasCreating = !editingRouteId;
+  try {
+    const response = await fetch(editingRouteId ? `/api/routes/${encodeURIComponent(editingRouteId)}` : '/api/routes', {
+      method: editingRouteId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Unable to save route.');
+    event.target.reset();
+    editingRouteId = null;
+    document.getElementById('routeSubmitBtn').textContent = 'Add route';
+    setManagementMessage('routeMessage', result.message);
+    await loadRouteAndBusData();
+
+    if (wasCreating && result.route) {
+      openRoutePriceModal(result.route);
+    }
+  } catch (error) {
+    setManagementMessage('routeMessage', error.message || 'Unable to save route.', true);
+  }
+}
+
+async function handleBusSubmit(event) {
+  event.preventDefault();
+  const formData = new FormData(event.target);
+  const payload = {
+    bus_number: String(formData.get('busNumber') || '').trim(),
+    route_number: String(formData.get('routeNumber') || '').trim(),
+    bus_type: String(formData.get('busType') || 'Normal'),
+  };
+  try {
+    const response = await fetch(editingBusId ? `/api/buses/${encodeURIComponent(editingBusId)}` : '/api/buses', {
+      method: editingBusId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Unable to save bus.');
+    event.target.reset();
+    editingBusId = null;
+    document.getElementById('busSubmitBtn').textContent = 'Register bus';
+    setManagementMessage('busMessage', result.message);
+    await loadRouteAndBusData();
+  } catch (error) {
+    setManagementMessage('busMessage', error.message || 'Unable to save bus.', true);
+  }
+}
+
+async function handleRouteManagementClick(event) {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  const route = state.databaseRoutes.find((item) => String(item._id) === button.dataset.id);
+  if (!route) return;
+  if (button.dataset.action === 'edit-route') {
+    editingRouteId = route._id;
+    document.getElementById('routeNumberInput').value = route.route_number;
+    document.getElementById('routeNameInput').value = route.route_name;
+    document.getElementById('routeTimesInput').value = (route.departure_times || []).join(', ');
+    document.getElementById('routeSubmitBtn').textContent = 'Update route';
+    document.getElementById('routeNumberInput').focus();
+    return;
+  }
+  if (button.dataset.action === 'manage-fares') {
+    openRoutePriceModal(route);
+    return;
+  }
+  if (button.dataset.action === 'delete-route' && confirm(`Delete route ${route.route_number}?`)) {
+    try {
+      const response = await fetch(`/api/routes/${encodeURIComponent(route._id)}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Unable to delete route.');
+      setManagementMessage('routeMessage', result.message);
+      await loadRouteAndBusData();
+    } catch (error) {
+      setManagementMessage('routeMessage', error.message || 'Unable to delete route.', true);
+    }
+  }
+}
+
+async function handleBusManagementClick(event) {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  const bus = state.databaseBuses.find((item) => String(item._id) === button.dataset.id);
+  if (!bus) return;
+  if (button.dataset.action === 'edit-bus') {
+    editingBusId = bus._id;
+    document.getElementById('busNumberInput').value = bus.bus_number;
+    document.getElementById('busRouteInput').value = bus.route_number;
+    document.getElementById('busTypeInput').value = bus.bus_type;
+    document.getElementById('busSubmitBtn').textContent = 'Update bus';
+    document.getElementById('busNumberInput').focus();
+    return;
+  }
+  if (button.dataset.action === 'delete-bus' && confirm(`Remove bus ${bus.bus_number}?`)) {
+    try {
+      const response = await fetch(`/api/buses/${encodeURIComponent(bus._id)}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Unable to remove bus.');
+      setManagementMessage('busMessage', result.message);
+      await loadRouteAndBusData();
+    } catch (error) {
+      setManagementMessage('busMessage', error.message || 'Unable to remove bus.', true);
+    }
   }
 }
 
@@ -844,14 +1259,29 @@ function renderDriverAccountsList() {
 
 async function loadSchedulesFromDatabase() {
   try {
-    const response = await fetch('/api/shedulle');
-    const result = await response.json();
+    const [scheduleResponse, logResponse] = await Promise.all([
+      fetch('/api/shedulle'),
+      fetch('/api/departure-logs')
+    ]);
+    const result = await scheduleResponse.json();
+    const logResult = logResponse.ok ? await logResponse.json() : { logs: [] };
 
-    if (!response.ok) {
+    if (!scheduleResponse.ok) {
       throw new Error(result.message || 'Failed to load schedules from MongoDB.');
     }
 
-    state.schedules = (Array.isArray(result.shedulles) ? result.shedulles : []).map((item) => ({
+    // A schedule can have many trips. The newest departure log is used for
+    // the timetable display; all records remain in departure_logs.
+    const latestLogByScheduleId = new Map();
+    (Array.isArray(logResult.logs) ? logResult.logs : []).forEach((log) => {
+      if (!latestLogByScheduleId.has(String(log.schedule_id))) {
+        latestLogByScheduleId.set(String(log.schedule_id), log);
+      }
+    });
+
+    state.schedules = (Array.isArray(result.shedulles) ? result.shedulles : []).map((item) => {
+      const departureLog = latestLogByScheduleId.get(String(item._id)) || {};
+      return {
       id: String(item._id),
       route: item.route_name,
       routeNumber: item.route_number,
@@ -863,9 +1293,16 @@ async function loadSchedulesFromDatabase() {
       status: item.status,
       pendingStatus: item.pending_status,
       pendingStatusDriver: item.pending_status_driver,
+      actualDepartureDate: departureLog.actual_departure_date || '',
+      actualDepartureTime: departureLog.actual_departure_time || '',
+      isDelayed: Boolean(departureLog.is_delayed),
+      delayMinutes: Number(departureLog.delay_minutes) || 0,
+      delayReason: departureLog.delay_reason || '',
+      otherDelayReason: departureLog.other_delay_reason || '',
       type: item.bus_type,
       priceBase: Number(item.price_base) || 1200
-    }));
+    };
+    });
     saveState();
     render();
   } catch (error) {
@@ -890,6 +1327,32 @@ async function loadDriversFromDatabase() {
     if (listEl) {
       listEl.innerHTML = `<p class="form-error">${error.message || 'Unable to load drivers from MongoDB.'}</p>`;
     }
+  }
+}
+
+async function loadRouteAndBusData() {
+  try {
+    const [routeResponse, busResponse, fareResponse] = await Promise.all([
+      fetch('/api/routes'),
+      fetch('/api/buses'),
+      fetch('/api/fare-rules'),
+    ]);
+    const [routeResult, busResult, fareResult] = await Promise.all([
+      routeResponse.json(),
+      busResponse.json(),
+      fareResponse.json(),
+    ]);
+    if (!routeResponse.ok) throw new Error(routeResult.message || 'Unable to load routes.');
+    if (!busResponse.ok) throw new Error(busResult.message || 'Unable to load buses.');
+    state.databaseRoutes = Array.isArray(routeResult.routes) ? routeResult.routes : [];
+    state.databaseBuses = Array.isArray(busResult.buses) ? busResult.buses : [];
+    state.fareRules = Array.isArray(fareResult?.rules) ? fareResult.rules : DEFAULT_FARE_STAGES;
+    renderAdminPanel();
+    renderPassengerPanel();
+    renderAdminFaresPage();
+  } catch (error) {
+    const list = document.getElementById('routeManagementList') || document.getElementById('busManagementList');
+    if (list) list.innerHTML = `<p class="form-error">${escapeHtml(error.message || 'Unable to load route and bus data.')}</p>`;
   }
 }
 
@@ -929,11 +1392,695 @@ function closePriceModal() {
   modal.setAttribute('aria-hidden', 'true');
 }
 
+function openPassengerTimetable() {
+  const modal = document.getElementById('passengerTimetableModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  document.getElementById('passengerRouteSelect')?.focus();
+}
+
+function closePassengerTimetable() {
+  const modal = document.getElementById('passengerTimetableModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  const routeSelect = document.getElementById('passengerRouteSelect');
+  if (routeSelect) {
+    routeSelect.value = '';
+    renderPassengerRouteTimetable('');
+  }
+}
+
+// ─── MASTER PRICE TABLE & FARE MATRIX LOGIC ───
+
+const DEFAULT_FARE_STAGES = [
+  { stage_number: 1, max_km: 2.0, price: 30 },
+  { stage_number: 2, max_km: 5.0, price: 45 },
+  { stage_number: 3, max_km: 8.0, price: 55 },
+  { stage_number: 4, max_km: 12.0, price: 70 },
+  { stage_number: 5, max_km: 16.0, price: 85 },
+  { stage_number: 6, max_km: 20.0, price: 100 },
+  { stage_number: 7, max_km: 25.0, price: 120 },
+  { stage_number: 8, max_km: 30.0, price: 140 },
+  { stage_number: 9, max_km: 36.0, price: 165 },
+  { stage_number: 10, max_km: 42.0, price: 190 },
+];
+
+function getFareRules() {
+  if (Array.isArray(state.fareRules) && state.fareRules.length > 0) {
+    return state.fareRules;
+  }
+  return DEFAULT_FARE_STAGES;
+}
+
+function calculateFareBetweenSections(secA, secB, route = null) {
+  if (!secA || !secB) return 30;
+
+  const numA = Number(secA.section_number ?? 1);
+  const numB = Number(secB.section_number ?? 1);
+  const from = Math.min(numA, numB);
+  const to = Math.max(numA, numB);
+  const key = `${from}-${to}`;
+
+  if (route && route.custom_fares) {
+    const val = route.custom_fares instanceof Map 
+      ? route.custom_fares.get(key)
+      : (route.custom_fares[key] !== undefined ? route.custom_fares[key] : undefined);
+    if (val !== undefined && val !== null && !isNaN(val) && Number(val) > 0) {
+      return Number(val);
+    }
+  }
+
+  const rules = getFareRules();
+
+  if (numA === numB) {
+    return rules[0]?.price || 30;
+  }
+
+  const kmA = Number(secA.distance_km || 0);
+  const kmB = Number(secB.distance_km || 0);
+  const dist = Math.abs(kmB - kmA);
+
+  if (dist > 0) {
+    const matched = rules.find((r) => dist <= r.max_km);
+    if (matched) return matched.price;
+    const last = rules[rules.length - 1];
+    const extra = dist - last.max_km;
+    return Math.round(last.price + (extra * 4));
+  }
+
+  const stepDiff = Math.abs(to - from);
+  const matchedStep = rules.find((r) => r.stage_number === (stepDiff + 1));
+  if (matchedStep) return matchedStep.price;
+
+  return (rules[0]?.price || 30) + (stepDiff * 15);
+}
+
+function generateFareMatrixHtml(route, options = {}) {
+  const { editable = false, highlightPair = null, tableId = 'fareMatrixTable' } = options;
+  if (!route) return '<p class="helper-text">Please select a route to display its price table.</p>';
+
+  let sections = Array.isArray(route.sections) && route.sections.length > 0
+    ? [...route.sections].sort((a, b) => a.section_number - b.section_number)
+    : [
+        { section_number: 1, section_name: 'section 1', distance_km: 0 },
+        { section_number: 2, section_name: 'section 2', distance_km: 4 },
+        { section_number: 3, section_name: 'section 3', distance_km: 8 }
+      ];
+
+  const headerCols = sections.map((sec) => `
+    <th>${escapeHtml(sec.section_name || `section ${sec.section_number}`)} <span class="excel-filter-caret">▼</span></th>
+  `).join('');
+
+  const rowsHtml = sections.map((secRow, rowIndex) => {
+    const isEven = rowIndex % 2 === 0;
+    const rowClass = isEven ? 'row-even' : 'row-odd';
+
+    const cellCols = sections.map((secCol, colIndex) => {
+      if (colIndex < rowIndex) {
+        return `<td class="empty-cell"></td>`;
+      }
+
+      const fare = calculateFareBetweenSections(secRow, secCol, route);
+      const isHighlighted = highlightPair && (
+        (highlightPair.from === secRow.section_number && highlightPair.to === secCol.section_number) ||
+        (highlightPair.from === secCol.section_number && highlightPair.to === secRow.section_number)
+      );
+
+      const cellKey = `${Math.min(secRow.section_number, secCol.section_number)}-${Math.max(secRow.section_number, secCol.section_number)}`;
+
+      if (editable) {
+        return `
+          <td class="fare-cell ${isHighlighted ? 'highlight-fare' : ''}">
+            <input type="number" 
+                   class="matrix-cell-input" 
+                   data-cell-key="${cellKey}" 
+                   value="${fare}" 
+                   style="width: 58px; text-align: center; font-weight: 700; border: 1px solid #8ea9db; border-radius: 4px; padding: 2px 4px;" />
+          </td>
+        `;
+      }
+
+      return `
+        <td class="fare-cell ${isHighlighted ? 'highlight-fare' : ''}" 
+            data-from="${secRow.section_number}" 
+            data-to="${secCol.section_number}"
+            title="Ticket fare: Rs. ${fare}">
+          ${fare}
+        </td>
+      `;
+    }).join('');
+
+    return `
+      <tr class="${rowClass}">
+        <td class="row-header">${escapeHtml(secRow.section_name || `section ${secRow.section_number}`)}</td>
+        ${cellCols}
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <table class="excel-fare-table" id="${tableId}">
+      <thead>
+        <tr>
+          <th class="first-col-header">Column1 <span class="excel-filter-caret">▼</span></th>
+          ${headerCols}
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+  `;
+}
+
+// ─── ADMIN ROUTE SECTIONS & PRICE MODAL ───
+
+function openRoutePriceModal(route) {
+  const modal = document.getElementById('routePriceModal');
+  if (!modal || !route) return;
+
+  state.currentEditingRoutePrice = JSON.parse(JSON.stringify(route));
+  if (!Array.isArray(state.currentEditingRoutePrice.sections) || state.currentEditingRoutePrice.sections.length === 0) {
+    state.currentEditingRoutePrice.sections = [
+      { section_number: 1, section_name: 'section 1', distance_km: 0 },
+      { section_number: 2, section_name: 'section 2', distance_km: 4 },
+      { section_number: 3, section_name: 'section 3', distance_km: 8 }
+    ];
+  }
+  if (!state.currentEditingRoutePrice.custom_fares) {
+    state.currentEditingRoutePrice.custom_fares = {};
+  }
+
+  const titleEl = document.getElementById('routePriceModalTitle');
+  const subEl = document.getElementById('routePriceModalSubtitle');
+  if (titleEl) titleEl.textContent = `Sections & Prices: Route ${route.route_number}`;
+  if (subEl) subEl.textContent = `${route.route_name}`;
+
+  renderRouteSectionsEditor();
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeRoutePriceModal() {
+  const modal = document.getElementById('routePriceModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+  state.currentEditingRoutePrice = null;
+  const msgEl = document.getElementById('routePriceSaveMessage');
+  if (msgEl) msgEl.textContent = '';
+}
+
+function renderRouteSectionsEditor() {
+  const container = document.getElementById('routeSectionsContainer');
+  const preview = document.getElementById('adminFareMatrixPreview');
+  const route = state.currentEditingRoutePrice;
+  if (!container || !route) return;
+
+  const sections = route.sections || [];
+  container.innerHTML = sections.map((sec, idx) => `
+    <div class="section-row-item">
+      <span class="section-index-badge">Sec #${sec.section_number || (idx + 1)}</span>
+      <input type="text" class="form-control sec-name-input" data-idx="${idx}" value="${escapeHtml(sec.section_name || '')}" placeholder="Section name" />
+      <input type="number" step="0.5" min="0" class="form-control sec-km-input" data-idx="${idx}" value="${sec.distance_km ?? (idx * 4)}" placeholder="Distance (km)" />
+      ${sections.length > 2 ? `<button type="button" class="section-delete-btn" data-delete-idx="${idx}" title="Remove section">×</button>` : '<span></span>'}
+    </div>
+  `).join('');
+
+  if (preview) {
+    preview.innerHTML = generateFareMatrixHtml(route, { editable: true, tableId: 'modalFareMatrixTable' });
+  }
+}
+
+async function saveRouteSectionsAndPrices() {
+  const route = state.currentEditingRoutePrice;
+  const msgEl = document.getElementById('routePriceSaveMessage');
+  if (!route || !route._id) return;
+
+  const container = document.getElementById('routeSectionsContainer');
+  if (container) {
+    const nameInputs = container.querySelectorAll('.sec-name-input');
+    const kmInputs = container.querySelectorAll('.sec-km-input');
+    route.sections = Array.from(nameInputs).map((nameInput, idx) => ({
+      section_number: idx + 1,
+      section_name: nameInput.value.trim() || `section ${idx + 1}`,
+      distance_km: Math.max(0, Number(kmInputs[idx]?.value || 0))
+    }));
+  }
+
+  const preview = document.getElementById('adminFareMatrixPreview');
+  if (preview) {
+    const cellInputs = preview.querySelectorAll('.matrix-cell-input');
+    route.custom_fares = {};
+    cellInputs.forEach((input) => {
+      const key = input.dataset.cellKey;
+      const val = Number(input.value);
+      if (key && !isNaN(val) && val > 0) {
+        route.custom_fares[key] = val;
+      }
+    });
+  }
+
+  try {
+    const response = await fetch(`/api/routes/${encodeURIComponent(route._id)}/sections`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sections: route.sections,
+        custom_fares: route.custom_fares
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Unable to save sections.');
+    if (msgEl) {
+      msgEl.textContent = 'Sections & price table saved successfully!';
+      msgEl.classList.remove('form-error');
+      msgEl.classList.add('form-success');
+    }
+    await loadRouteAndBusData();
+    setTimeout(() => {
+      closeRoutePriceModal();
+    }, 1200);
+  } catch (error) {
+    if (msgEl) {
+      msgEl.textContent = error.message || 'Error saving sections.';
+      msgEl.classList.remove('form-success');
+      msgEl.classList.add('form-error');
+    }
+  }
+}
+
+// ─── ADMIN FARES PAGE (admin-fares.html) ───
+
+function renderAdminFaresPage() {
+  renderMasterFareRulesTable();
+  populateAdminFareRouteSelect();
+}
+
+function renderMasterFareRulesTable() {
+  const tbody = document.getElementById('fareRulesTableBody');
+  if (!tbody) return;
+
+  const rules = getFareRules();
+  tbody.innerHTML = rules.map((rule, idx) => {
+    const normal = Number(rule.price);
+    const semi = Math.round(normal * 1.25);
+    const lux = Math.round(normal * 1.6);
+    return `
+      <tr data-rule-idx="${idx}">
+        <td><strong>Stage ${rule.stage_number}</strong></td>
+        <td>
+          <input type="number" step="0.5" min="0.1" class="master-rule-km" value="${rule.max_km}" style="max-width: 100px;" /> km
+        </td>
+        <td>
+          Rs. <input type="number" step="1" min="1" class="master-rule-price" value="${normal}" style="max-width: 100px;" />
+        </td>
+        <td>
+          <span style="font-size: 0.85rem; color: var(--muted);">Semi: Rs. ${semi} | Lux: Rs. ${lux}</span>
+        </td>
+        <td>
+          ${rules.length > 1 ? `<button type="button" class="btn btn-secondary btn-sm" data-action="delete-fare-rule" data-idx="${idx}" style="color: var(--danger); padding: 0.2rem 0.5rem;">Delete</button>` : '—'}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function saveMasterFareRules() {
+  const tbody = document.getElementById('fareRulesTableBody');
+  const msgEl = document.getElementById('fareRulesMessage');
+  if (!tbody) return;
+
+  const kmInputs = tbody.querySelectorAll('.master-rule-km');
+  const priceInputs = tbody.querySelectorAll('.master-rule-price');
+
+  const newRules = Array.from(kmInputs).map((kmInput, idx) => ({
+    stage_number: idx + 1,
+    max_km: Number(kmInput.value) || ((idx + 1) * 3),
+    price: Number(priceInputs[idx]?.value) || 30
+  }));
+
+  try {
+    const response = await fetch('/api/fare-rules/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rules: newRules })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Unable to save master fare rules.');
+    state.fareRules = Array.isArray(result.rules) ? result.rules : newRules;
+    if (msgEl) {
+      msgEl.textContent = 'Master price table saved! Route prices updated automatically.';
+      msgEl.classList.remove('form-error');
+      msgEl.classList.add('form-success');
+    }
+    renderMasterFareRulesTable();
+    if (state.adminSelectedFareRouteId) {
+      renderAdminRouteFarePreview();
+    }
+  } catch (error) {
+    if (msgEl) {
+      msgEl.textContent = error.message || 'Failed to save master fare rules.';
+      msgEl.classList.remove('form-success');
+      msgEl.classList.add('form-error');
+    }
+  }
+}
+
+function populateAdminFareRouteSelect() {
+  const select = document.getElementById('adminFareRouteSelect');
+  if (!select) return;
+
+  const currentVal = select.value;
+  select.innerHTML = '<option value="">— Select a route to manage —</option>' +
+    state.databaseRoutes.map((r) => `
+      <option value="${r._id}">${escapeHtml(r.route_number)} · ${escapeHtml(r.route_name)}</option>
+    `).join('');
+
+  if (currentVal && state.databaseRoutes.some((r) => String(r._id) === currentVal)) {
+    select.value = currentVal;
+  }
+}
+
+function selectAdminFareRoute(routeId) {
+  const area = document.getElementById('routeFareEditorArea');
+  if (!area) return;
+
+  if (!routeId) {
+    area.classList.add('hidden');
+    state.adminSelectedFareRouteId = null;
+    return;
+  }
+
+  const route = state.databaseRoutes.find((r) => String(r._id) === routeId);
+  if (!route) {
+    area.classList.add('hidden');
+    return;
+  }
+
+  state.adminSelectedFareRouteId = routeId;
+  state.adminSelectedFareRoute = JSON.parse(JSON.stringify(route));
+  if (!Array.isArray(state.adminSelectedFareRoute.sections) || state.adminSelectedFareRoute.sections.length === 0) {
+    state.adminSelectedFareRoute.sections = [
+      { section_number: 1, section_name: 'section 1', distance_km: 0 },
+      { section_number: 2, section_name: 'section 2', distance_km: 4 },
+      { section_number: 3, section_name: 'section 3', distance_km: 8 }
+    ];
+  }
+  if (!state.adminSelectedFareRoute.custom_fares) {
+    state.adminSelectedFareRoute.custom_fares = {};
+  }
+
+  area.classList.remove('hidden');
+  renderAdminRouteSectionsList();
+  renderAdminRouteFarePreview();
+}
+
+function renderAdminRouteSectionsList() {
+  const container = document.getElementById('adminRouteSectionsList');
+  const route = state.adminSelectedFareRoute;
+  if (!container || !route) return;
+
+  const sections = route.sections || [];
+  container.innerHTML = sections.map((sec, idx) => `
+    <div class="section-row-item">
+      <span class="section-index-badge">Sec #${sec.section_number || (idx + 1)}</span>
+      <input type="text" class="form-control admin-sec-name" data-idx="${idx}" value="${escapeHtml(sec.section_name || '')}" placeholder="Section name" />
+      <input type="number" step="0.5" min="0" class="form-control admin-sec-km" data-idx="${idx}" value="${sec.distance_km ?? (idx * 4)}" placeholder="Distance (km)" />
+      ${sections.length > 2 ? `<button type="button" class="section-delete-btn" data-action="admin-delete-sec" data-idx="${idx}" title="Remove section">×</button>` : '<span></span>'}
+    </div>
+  `).join('');
+}
+
+function renderAdminRouteFarePreview() {
+  const container = document.getElementById('adminFareMatrixTableContainer');
+  const route = state.adminSelectedFareRoute;
+  if (!container || !route) return;
+
+  container.innerHTML = generateFareMatrixHtml(route, { editable: true, tableId: 'adminPageFareMatrix' });
+}
+
+async function saveAdminRouteFares() {
+  const route = state.adminSelectedFareRoute;
+  const msgEl = document.getElementById('routeFareSaveMessage');
+  if (!route || !route._id) return;
+
+  const container = document.getElementById('adminRouteSectionsList');
+  if (container) {
+    const nameInputs = container.querySelectorAll('.admin-sec-name');
+    const kmInputs = container.querySelectorAll('.admin-sec-km');
+    route.sections = Array.from(nameInputs).map((nameInput, idx) => ({
+      section_number: idx + 1,
+      section_name: nameInput.value.trim() || `section ${idx + 1}`,
+      distance_km: Math.max(0, Number(kmInputs[idx]?.value || 0))
+    }));
+  }
+
+  const matrixContainer = document.getElementById('adminFareMatrixTableContainer');
+  if (matrixContainer) {
+    const cellInputs = matrixContainer.querySelectorAll('.matrix-cell-input');
+    route.custom_fares = {};
+    cellInputs.forEach((input) => {
+      const key = input.dataset.cellKey;
+      const val = Number(input.value);
+      if (key && !isNaN(val) && val > 0) {
+        route.custom_fares[key] = val;
+      }
+    });
+  }
+
+  try {
+    const response = await fetch(`/api/routes/${encodeURIComponent(route._id)}/sections`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sections: route.sections,
+        custom_fares: route.custom_fares
+      })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'Unable to save route sections.');
+    if (msgEl) {
+      msgEl.textContent = 'Route sections & price table saved successfully!';
+      msgEl.classList.remove('form-error');
+      msgEl.classList.add('form-success');
+    }
+    await loadRouteAndBusData();
+  } catch (error) {
+    if (msgEl) {
+      msgEl.textContent = error.message || 'Error saving route sections.';
+      msgEl.classList.remove('form-success');
+      msgEl.classList.add('form-error');
+    }
+  }
+}
+
+// ─── PASSENGER PRICE TABLE MODAL ───
+
+function openPassengerPriceModal(preselectedRouteNumber = null) {
+  const modal = document.getElementById('passengerPriceModal');
+  const select = document.getElementById('passengerPriceRouteSelect');
+  if (!modal || !select) return;
+
+  select.innerHTML = '<option value="">— Choose a route —</option>' +
+    state.databaseRoutes.map((r) => `
+      <option value="${escapeHtml(r.route_number)}">${escapeHtml(r.route_number)} · ${escapeHtml(r.route_name)}</option>
+    `).join('');
+
+  const targetRouteNum = preselectedRouteNumber || (state.databaseRoutes[0]?.route_number || '');
+  if (targetRouteNum) {
+    select.value = targetRouteNum;
+    renderPassengerFareMatrix(targetRouteNum);
+  }
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closePassengerPriceModal() {
+  const modal = document.getElementById('passengerPriceModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function renderPassengerFareMatrix(routeNumber, highlightPair = null) {
+  const container = document.getElementById('passengerFareMatrixContainer');
+  const quickBox = document.getElementById('passengerQuickFareBox');
+  const fromSelect = document.getElementById('calcFromSection');
+  const toSelect = document.getElementById('calcToSection');
+  if (!container) return;
+
+  const route = state.databaseRoutes.find((r) => r.route_number === routeNumber);
+  if (!route) {
+    container.innerHTML = '<p class="helper-text">Please choose a route above to view the price table.</p>';
+    if (quickBox) quickBox.classList.add('hidden');
+    return;
+  }
+
+  container.innerHTML = generateFareMatrixHtml(route, { highlightPair, tableId: 'passengerFareTable' });
+
+  const sections = Array.isArray(route.sections) && route.sections.length > 0
+    ? [...route.sections].sort((a, b) => a.section_number - b.section_number)
+    : [
+        { section_number: 1, section_name: 'section 1', distance_km: 0 },
+        { section_number: 2, section_name: 'section 2', distance_km: 4 },
+        { section_number: 3, section_name: 'section 3', distance_km: 8 }
+      ];
+
+  if (quickBox && fromSelect && toSelect) {
+    const currentFrom = fromSelect.value;
+    const currentTo = toSelect.value;
+    fromSelect.innerHTML = sections.map((s) => `<option value="${s.section_number}">Sec ${s.section_number}: ${escapeHtml(s.section_name)}</option>`).join('');
+    toSelect.innerHTML = sections.map((s) => `<option value="${s.section_number}">Sec ${s.section_number}: ${escapeHtml(s.section_name)}</option>`).join('');
+
+    if (currentFrom && sections.some((s) => String(s.section_number) === currentFrom)) {
+      fromSelect.value = currentFrom;
+    } else {
+      fromSelect.value = String(sections[0]?.section_number || 1);
+    }
+
+    if (currentTo && sections.some((s) => String(s.section_number) === currentTo)) {
+      toSelect.value = currentTo;
+    } else {
+      toSelect.value = String(sections[sections.length - 1]?.section_number || sections[0]?.section_number || 1);
+    }
+
+    quickBox.classList.remove('hidden');
+    updatePassengerFareCalc(route);
+  }
+}
+
+function updatePassengerFareCalc(route = null) {
+  const fromSelect = document.getElementById('calcFromSection');
+  const toSelect = document.getElementById('calcToSection');
+  const resultBox = document.getElementById('calcFareResult');
+  const routeSelect = document.getElementById('passengerPriceRouteSelect');
+  if (!fromSelect || !toSelect || !resultBox) return;
+
+  const currentRoute = route || state.databaseRoutes.find((r) => r.route_number === routeSelect?.value);
+  if (!currentRoute) return;
+
+  const numFrom = Number(fromSelect.value || 1);
+  const numTo = Number(toSelect.value || 1);
+
+  const sections = currentRoute.sections || [];
+  const secA = sections.find((s) => s.section_number === numFrom) || { section_number: numFrom, distance_km: 0 };
+  const secB = sections.find((s) => s.section_number === numTo) || { section_number: numTo, distance_km: 0 };
+
+  const normal = calculateFareBetweenSections(secA, secB, currentRoute);
+  const semi = Math.round(normal * 1.25);
+  const lux = Math.round(normal * 1.6);
+
+  resultBox.innerHTML = `
+    <div class="calc-fare-card normal">
+      <div class="calc-fare-type">Normal Bus</div>
+      <div class="calc-fare-amount">Rs. ${normal}</div>
+    </div>
+    <div class="calc-fare-card semi">
+      <div class="calc-fare-type">Semi Luxury</div>
+      <div class="calc-fare-amount">Rs. ${semi}</div>
+    </div>
+    <div class="calc-fare-card luxury">
+      <div class="calc-fare-type">Luxury (AC)</div>
+      <div class="calc-fare-amount">Rs. ${lux}</div>
+    </div>
+  `;
+
+  const container = document.getElementById('passengerFareMatrixContainer');
+  if (container) {
+    container.innerHTML = generateFareMatrixHtml(currentRoute, {
+      highlightPair: { from: numFrom, to: numTo },
+      tableId: 'passengerFareTable'
+    });
+  }
+}
+
+// ─── DRIVER PRICE TABLE MODAL ───
+
+function openDriverPriceModal() {
+  const modal = document.getElementById('driverPriceModal');
+  const select = document.getElementById('driverPriceRouteSelect');
+  if (!modal || !select) return;
+
+  select.innerHTML = '<option value="">— Choose a route —</option>' +
+    state.databaseRoutes.map((r) => `
+      <option value="${escapeHtml(r.route_number)}">${escapeHtml(r.route_number)} · ${escapeHtml(r.route_name)}</option>
+    `).join('');
+
+  const driverUname = state.currentUser?.username;
+  const myTrip = state.schedules.find((s) => s.driverName === driverUname);
+  const defaultRoute = myTrip?.routeNumber || (state.databaseRoutes[0]?.route_number || '');
+
+  if (defaultRoute) {
+    select.value = defaultRoute;
+    renderDriverFareMatrix(defaultRoute);
+  }
+
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeDriverPriceModal() {
+  const modal = document.getElementById('driverPriceModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function renderDriverFareMatrix(routeNumber) {
+  const container = document.getElementById('driverFareMatrixContainer');
+  if (!container) return;
+
+  const route = state.databaseRoutes.find((r) => r.route_number === routeNumber);
+  if (!route) {
+    container.innerHTML = '<p class="helper-text">Please choose a route to view its price table.</p>';
+    return;
+  }
+
+  container.innerHTML = generateFareMatrixHtml(route, { tableId: 'driverFareTable' });
+}
+
 function handlePassengerClick(event) {
   const el = event.target.closest('[data-action]');
   if (!el) return;
   const action = el.getAttribute('data-action');
   const id = el.getAttribute('data-id');
+  if (action === 'open-timetable') {
+    openPassengerTimetable();
+    return;
+  }
+  if (action === 'close-timetable') {
+    closePassengerTimetable();
+    return;
+  }
+  if (action === 'open-price-table') {
+    openPassengerPriceModal();
+    return;
+  }
+  if (action === 'close-passenger-price-modal') {
+    closePassengerPriceModal();
+    return;
+  }
+  if (action === 'view-route-fares') {
+    const routeNum = el.getAttribute('data-route');
+    openPassengerPriceModal(routeNum);
+    return;
+  }
+  if (action === 'open-driver-price-modal') {
+    openDriverPriceModal();
+    return;
+  }
+  if (action === 'close-driver-price-modal') {
+    closeDriverPriceModal();
+    return;
+  }
+  if (action === 'close-route-price-modal') {
+    closeRoutePriceModal();
+    return;
+  }
   if (action === 'price') {
     showPriceModal(id);
     return;
@@ -952,6 +2099,15 @@ async function handleTableClick(event) {
   const action = button.getAttribute('data-action');
 
   if (action === 'approve-status') {
+    const schedule = getScheduleById(id);
+    if (schedule?.pendingStatus === 'Departed') {
+      openDepartureDetailsModal({
+        type: 'approval',
+        scheduleId: id,
+        busNumber: schedule.busNumber
+      });
+      return;
+    }
     try {
       const response = await fetch(`/api/shedulle/${encodeURIComponent(id)}/status-approve`, { method: 'POST' });
       const result = await readApiResponse(response);
@@ -964,9 +2120,14 @@ async function handleTableClick(event) {
   }
 
   if (action === 'delete') {
-    state.schedules = state.schedules.filter((item) => String(item.id) !== String(id));
-    saveState();
-    render();
+    try {
+      const response = await fetch(`/api/shedulle/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const result = await readApiResponse(response);
+      if (!response.ok) throw new Error(result.message || 'Unable to delete schedule.');
+      await loadSchedulesFromDatabase();
+    } catch (error) {
+      alert(error.message || 'Unable to delete schedule.');
+    }
     return;
   }
 
@@ -975,9 +2136,12 @@ async function handleTableClick(event) {
     if (!schedule) return;
 
     editingScheduleId = schedule.id;
+    const routeSelect = document.getElementById('routeNumber');
+    if (routeSelect) {
+      routeSelect.value = schedule.routeNumber || '';
+      populateScheduleChoices(schedule.busNumber, schedule.departureTime);
+    }
     document.getElementById('route').value = schedule.route;
-    document.getElementById('routeNumber').value = schedule.routeNumber || '';
-    document.getElementById('busNumber').value = schedule.busNumber;
     const driverSel = document.getElementById('driverName');
     if (driverSel) {
       driverSel.value = schedule.assignedDriverUsername || '';
@@ -988,7 +2152,6 @@ async function handleTableClick(event) {
         if (matchOpt) driverSel.value = matchOpt.value;
       }
     }
-    document.getElementById('departureTime').value = schedule.departureTime;
     document.getElementById('arrivalTime').value = schedule.arrivalTime;
     document.getElementById('status').value = schedule.status;
     document.getElementById('busType').value = schedule.type || 'Normal';
@@ -1036,10 +2199,16 @@ function attachEvents() {
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
   const scheduleForm = document.getElementById('scheduleForm');
+  const routeForm = document.getElementById('routeForm');
+  const busForm = document.getElementById('busForm');
+  const routeManagementList = document.getElementById('routeManagementList');
+  const busManagementList = document.getElementById('busManagementList');
+  const scheduleRouteSelect = document.getElementById('routeNumber');
   const timetableGroups = document.getElementById('routeTimetableGroups');
   const driverTrips = document.getElementById('driverTrips');
   const passengerTrips = document.getElementById('passengerTrips');
   const searchRoute = document.getElementById('searchRoute');
+  const passengerRouteSelect = document.getElementById('passengerRouteSelect');
   const statusFilter = document.getElementById('statusFilter');
   const logoutBtn = document.getElementById('logoutBtn');
   const verifyOtpBtn = document.getElementById('verifyOtpBtn');
@@ -1054,6 +2223,19 @@ function attachEvents() {
   if (loginForm) loginForm.addEventListener('submit', handleLogin);
   if (registerForm) registerForm.addEventListener('submit', handleRegister);
   if (scheduleForm) scheduleForm.addEventListener('submit', handleScheduleSubmit);
+  const departureDetailsForm = document.getElementById('departureDetailsForm');
+  if (departureDetailsForm) departureDetailsForm.addEventListener('submit', handleDepartureDetailsSubmit);
+  const departureIsDelayed = document.getElementById('departureIsDelayed');
+  if (departureIsDelayed) departureIsDelayed.addEventListener('change', toggleDepartureDelayFields);
+  const departureDelayReason = document.getElementById('departureDelayReason');
+  if (departureDelayReason) departureDelayReason.addEventListener('change', toggleDepartureOtherReason);
+  const cancelDepartureDetails = document.getElementById('cancelDepartureDetails');
+  if (cancelDepartureDetails) cancelDepartureDetails.addEventListener('click', closeDepartureDetailsModal);
+  if (routeForm) routeForm.addEventListener('submit', handleRouteSubmit);
+  if (busForm) busForm.addEventListener('submit', handleBusSubmit);
+  if (routeManagementList) routeManagementList.addEventListener('click', handleRouteManagementClick);
+  if (busManagementList) busManagementList.addEventListener('click', handleBusManagementClick);
+  if (scheduleRouteSelect) scheduleRouteSelect.addEventListener('change', () => populateScheduleChoices());
   if (timetableGroups) timetableGroups.addEventListener('click', handleTableClick);
   const createDriverForm = document.getElementById('createDriverForm');
   if (createDriverForm) createDriverForm.addEventListener('submit', handleAdminCreateDriver);
@@ -1091,15 +2273,206 @@ function attachEvents() {
   if (driverTrips) driverTrips.addEventListener('change', handleDriverStatusChange);
   if (passengerTrips) passengerTrips.addEventListener('click', handlePassengerClick);
   if (searchRoute) searchRoute.addEventListener('input', renderPassengerPanel);
+  if (passengerRouteSelect) passengerRouteSelect.addEventListener('change', renderPassengerPanel);
   if (statusFilter) statusFilter.addEventListener('change', renderPassengerPanel);
   if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+  const openTimetableBtn = document.getElementById('openPassengerTimetable');
+  if (openTimetableBtn) openTimetableBtn.addEventListener('click', openPassengerTimetable);
+  const openPriceTableBtn = document.getElementById('openPassengerPriceTable');
+  if (openPriceTableBtn) openPriceTableBtn.addEventListener('click', () => openPassengerPriceModal());
   if (verifyOtpBtn) verifyOtpBtn.addEventListener('click', handleVerifyOtp);
   if (resendOtpBtn) resendOtpBtn.addEventListener('click', handleResendOtp);
   const priceModal = document.getElementById('priceModal');
   if (priceModal) priceModal.addEventListener('click', handlePassengerClick);
+
+  // ── Route Sections & Price Modal Events (admin-routes.html) ──
+  const addSectionBtn = document.getElementById('addSectionBtn');
+  if (addSectionBtn) {
+    addSectionBtn.addEventListener('click', () => {
+      if (!state.currentEditingRoutePrice) return;
+      const secs = state.currentEditingRoutePrice.sections || [];
+      const lastKm = secs.length > 0 ? Number(secs[secs.length - 1].distance_km || 0) : 0;
+      secs.push({
+        section_number: secs.length + 1,
+        section_name: `section ${secs.length + 1}`,
+        distance_km: lastKm + 4
+      });
+      state.currentEditingRoutePrice.sections = secs;
+      renderRouteSectionsEditor();
+    });
+  }
+
+  const routeSectionsContainer = document.getElementById('routeSectionsContainer');
+  if (routeSectionsContainer) {
+    routeSectionsContainer.addEventListener('input', (e) => {
+      const idx = Number(e.target.dataset.idx);
+      if (isNaN(idx) || !state.currentEditingRoutePrice?.sections?.[idx]) return;
+      if (e.target.classList.contains('sec-name-input')) {
+        state.currentEditingRoutePrice.sections[idx].section_name = e.target.value;
+      }
+      if (e.target.classList.contains('sec-km-input')) {
+        state.currentEditingRoutePrice.sections[idx].distance_km = Math.max(0, Number(e.target.value || 0));
+      }
+      const preview = document.getElementById('adminFareMatrixPreview');
+      if (preview) {
+        preview.innerHTML = generateFareMatrixHtml(state.currentEditingRoutePrice, { editable: true, tableId: 'modalFareMatrixTable' });
+      }
+    });
+
+    routeSectionsContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-delete-idx]');
+      if (!btn || !state.currentEditingRoutePrice?.sections) return;
+      const idx = Number(btn.dataset.deleteIdx);
+      if (state.currentEditingRoutePrice.sections.length <= 2) {
+        alert('A route must have at least 2 sections.');
+        return;
+      }
+      state.currentEditingRoutePrice.sections.splice(idx, 1);
+      state.currentEditingRoutePrice.sections.forEach((s, i) => {
+        s.section_number = i + 1;
+      });
+      renderRouteSectionsEditor();
+    });
+  }
+
+  const saveRoutePriceBtn = document.getElementById('saveRoutePriceBtn');
+  if (saveRoutePriceBtn) {
+    saveRoutePriceBtn.addEventListener('click', saveRouteSectionsAndPrices);
+  }
+
+  // ── Master Fare Rules & Route Sections Editor (admin-fares.html) ──
+  const addFareRuleBtn = document.getElementById('addFareRuleBtn');
+  if (addFareRuleBtn) {
+    addFareRuleBtn.addEventListener('click', () => {
+      const rules = getFareRules();
+      const lastRule = rules[rules.length - 1] || { stage_number: 0, max_km: 0, price: 20 };
+      rules.push({
+        stage_number: rules.length + 1,
+        max_km: Number(lastRule.max_km || 0) + 5,
+        price: Number(lastRule.price || 30) + 20
+      });
+      state.fareRules = rules;
+      renderMasterFareRulesTable();
+    });
+  }
+
+  const saveFareRulesBtn = document.getElementById('saveFareRulesBtn');
+  if (saveFareRulesBtn) {
+    saveFareRulesBtn.addEventListener('click', saveMasterFareRules);
+  }
+
+  const fareRulesTableBody = document.getElementById('fareRulesTableBody');
+  if (fareRulesTableBody) {
+    fareRulesTableBody.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('[data-action="delete-fare-rule"]');
+      if (!delBtn) return;
+      const idx = Number(delBtn.dataset.idx);
+      const rules = getFareRules();
+      if (rules.length <= 1) return;
+      rules.splice(idx, 1);
+      rules.forEach((r, i) => { r.stage_number = i + 1; });
+      state.fareRules = rules;
+      renderMasterFareRulesTable();
+    });
+  }
+
+  const adminFareRouteSelect = document.getElementById('adminFareRouteSelect');
+  if (adminFareRouteSelect) {
+    adminFareRouteSelect.addEventListener('change', (e) => {
+      selectAdminFareRoute(e.target.value);
+    });
+  }
+
+  const adminAddSectionBtn = document.getElementById('adminAddSectionBtn');
+  if (adminAddSectionBtn) {
+    adminAddSectionBtn.addEventListener('click', () => {
+      if (!state.adminSelectedFareRoute) return;
+      const secs = state.adminSelectedFareRoute.sections || [];
+      const lastKm = secs.length > 0 ? Number(secs[secs.length - 1].distance_km || 0) : 0;
+      secs.push({
+        section_number: secs.length + 1,
+        section_name: `section ${secs.length + 1}`,
+        distance_km: lastKm + 4
+      });
+      state.adminSelectedFareRoute.sections = secs;
+      renderAdminRouteSectionsList();
+      renderAdminRouteFarePreview();
+    });
+  }
+
+  const adminRouteSectionsList = document.getElementById('adminRouteSectionsList');
+  if (adminRouteSectionsList) {
+    adminRouteSectionsList.addEventListener('input', (e) => {
+      const idx = Number(e.target.dataset.idx);
+      if (isNaN(idx) || !state.adminSelectedFareRoute?.sections?.[idx]) return;
+      if (e.target.classList.contains('admin-sec-name')) {
+        state.adminSelectedFareRoute.sections[idx].section_name = e.target.value;
+      }
+      if (e.target.classList.contains('admin-sec-km')) {
+        state.adminSelectedFareRoute.sections[idx].distance_km = Math.max(0, Number(e.target.value || 0));
+      }
+      renderAdminRouteFarePreview();
+    });
+
+    adminRouteSectionsList.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('[data-action="admin-delete-sec"]');
+      if (!delBtn || !state.adminSelectedFareRoute?.sections) return;
+      const idx = Number(delBtn.dataset.idx);
+      if (state.adminSelectedFareRoute.sections.length <= 2) {
+        alert('A route must have at least 2 sections.');
+        return;
+      }
+      state.adminSelectedFareRoute.sections.splice(idx, 1);
+      state.adminSelectedFareRoute.sections.forEach((s, i) => { s.section_number = i + 1; });
+      renderAdminRouteSectionsList();
+      renderAdminRouteFarePreview();
+    });
+  }
+
+  const adminSaveRouteFaresBtn = document.getElementById('adminSaveRouteFaresBtn');
+  if (adminSaveRouteFaresBtn) {
+    adminSaveRouteFaresBtn.addEventListener('click', saveAdminRouteFares);
+  }
+
+  const adminResetFaresBtn = document.getElementById('adminResetFaresBtn');
+  if (adminResetFaresBtn) {
+    adminResetFaresBtn.addEventListener('click', () => {
+      if (!state.adminSelectedFareRoute) return;
+      state.adminSelectedFareRoute.custom_fares = {};
+      renderAdminRouteFarePreview();
+    });
+  }
+
+  // ── Passenger Price Table Modal Events (passenger.html) ──
+  const passengerPriceRouteSelect = document.getElementById('passengerPriceRouteSelect');
+  if (passengerPriceRouteSelect) {
+    passengerPriceRouteSelect.addEventListener('change', (e) => {
+      renderPassengerFareMatrix(e.target.value);
+    });
+  }
+
+  const calcFromSection = document.getElementById('calcFromSection');
+  const calcToSection = document.getElementById('calcToSection');
+  if (calcFromSection) calcFromSection.addEventListener('change', () => updatePassengerFareCalc());
+  if (calcToSection) calcToSection.addEventListener('change', () => updatePassengerFareCalc());
+
+  // ── Driver Price Table Modal Events (driver.html) ──
+  const driverPriceRouteSelect = document.getElementById('driverPriceRouteSelect');
+  if (driverPriceRouteSelect) {
+    driverPriceRouteSelect.addEventListener('change', (e) => {
+      renderDriverFareMatrix(e.target.value);
+    });
+  }
+
   document.addEventListener('click', handlePassengerClick);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closePriceModal();
+    if (e.key === 'Escape') {
+      closePriceModal();
+      closePassengerTimetable();
+      closePassengerPriceModal();
+      closeDriverPriceModal();
+      closeRoutePriceModal();
+    }
   });
 }
 
@@ -1131,6 +2504,7 @@ window.addEventListener('DOMContentLoaded', () => {
   closePriceModal();
   render();
   loadSchedulesFromDatabase();
+  loadRouteAndBusData();
   if (document.getElementById('driverAccountsList') || document.getElementById('driverName')) {
     loadDriversFromDatabase();
   }
