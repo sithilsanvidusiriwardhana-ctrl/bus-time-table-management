@@ -109,7 +109,9 @@
                 ? 'admin.html'
                 : normalizedRole === 'train master'
                   ? 'train-master.html'
-                  : 'passenger.html';
+                  : (normalizedRole === 'taxi' || normalizedRole === 'taxi driver')
+                    ? 'taxi-driver.html'
+                    : 'passenger.html';
             window.location.replace(rolePage);
           }, 400);
         });

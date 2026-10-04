@@ -33,6 +33,9 @@ function isValidUser(user, users = defaultState.users) {
   if (!user || typeof user !== 'object') {
     return false;
   }
+  if (user.username && user.role) {
+    return true;
+  }
 
   const storedUsername = String(user.username || user.name || '').toLowerCase();
 
@@ -216,7 +219,9 @@ function normalizeRole(role) {
     admin: 'Admin',
     driver: 'Driver',
     passenger: 'Passenger',
-    'train master': 'Train Master'
+    'train master': 'Train Master',
+    'taxi driver': 'Taxi Driver',
+    taxi: 'Taxi Driver'
   }[roleName] || role;
 }
 
@@ -230,6 +235,8 @@ function getRolePage(role) {
       return 'passenger.html';
     case 'Train Master':
       return 'train-master.html';
+    case 'Taxi Driver':
+      return 'taxi-driver.html';
     default:
       return 'index.html';
   }
@@ -241,6 +248,7 @@ function isAllowedRolePage(role, page) {
     return ['admin.html', 'admin-drivers.html', 'admin-schedules.html'].includes(page);
   }
   if (normalizedRole === 'Train Master') return page === 'train-master.html';
+  if (normalizedRole === 'Taxi Driver') return page === 'taxi-driver.html';
   return page === getRolePage(normalizedRole);
 }
 
@@ -869,7 +877,10 @@ async function handleLogin(event) {
     window.location.href = 'otp.html';
 
   } catch (error) {
-    setLoginError(error.message || 'Server error during login.');
+    const message = error instanceof TypeError
+      ? 'Cannot reach the login API. Open the app at http://localhost:8000 or use its deployed website URL.'
+      : error.message || 'Server error during login.';
+    setLoginError(message);
   }
 }
 
@@ -1382,7 +1393,6 @@ function closePriceModal() {
 }
 
 function openPassengerTimetable() {
-  if (state.currentUser?.role !== 'Passenger') return;
   const modal = document.getElementById('passengerTimetableModal');
   if (!modal) return;
   modal.classList.remove('hidden');
@@ -2266,6 +2276,10 @@ function attachEvents() {
   if (passengerRouteSelect) passengerRouteSelect.addEventListener('change', renderPassengerPanel);
   if (statusFilter) statusFilter.addEventListener('change', renderPassengerPanel);
   if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+  const openTimetableBtn = document.getElementById('openPassengerTimetable');
+  if (openTimetableBtn) openTimetableBtn.addEventListener('click', openPassengerTimetable);
+  const openPriceTableBtn = document.getElementById('openPassengerPriceTable');
+  if (openPriceTableBtn) openPriceTableBtn.addEventListener('click', () => openPassengerPriceModal());
   if (verifyOtpBtn) verifyOtpBtn.addEventListener('click', handleVerifyOtp);
   if (resendOtpBtn) resendOtpBtn.addEventListener('click', handleResendOtp);
   const priceModal = document.getElementById('priceModal');

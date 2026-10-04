@@ -41,6 +41,9 @@ function getRolePage(role) {
       return 'passenger.html';
     case 'train master':
       return 'train-master.html';
+    case 'taxi':
+    case 'taxi driver':
+      return 'taxi-driver.html';
     default:
       return 'index.html';
   }
@@ -52,6 +55,7 @@ function isAllowedRolePage(role, page) {
     return ['admin.html', 'admin-drivers.html', 'admin-schedules.html', 'admin-routes.html', 'admin-buses.html', 'admin-fares.html'].includes(page);
   }
   if (normalizedRole === 'train master') return page === 'train-master.html';
+  if (normalizedRole === 'taxi' || normalizedRole === 'taxi driver') return page === 'taxi-driver.html';
   return page === getRolePage(normalizedRole);
 }
 
@@ -79,7 +83,13 @@ async function handlePortalLogin(event) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
     });
-    const result = await response.json();
+    const responseText = await response.text();
+    let result;
+    try {
+      result = responseText ? JSON.parse(responseText) : {};
+    } catch {
+      throw new Error('The login API is unavailable at this address. Open the app at http://localhost:8000/login.html or use its deployed website URL.');
+    }
 
     if (!response.ok) {
       throw new Error(result.message || 'Invalid username or password.');
@@ -97,7 +107,10 @@ async function handlePortalLogin(event) {
     sessionStorage.setItem('pendingAction', 'login');
     window.location.href = 'otp.html';
   } catch (error) {
-    setPortalMessage(error.message || 'Unable to connect to the server.', true);
+    const message = error instanceof TypeError
+      ? 'Cannot reach the login API. Open the app at http://localhost:8000/login.html or use its deployed website URL.'
+      : error.message || 'Unable to connect to the server.';
+    setPortalMessage(message, true);
   }
 }
 
@@ -111,7 +124,7 @@ function enforcePortalAccess() {
   const currentPage = window.location.pathname.split('/').pop() || 'index.html';
   const allowedPage = portalState.currentUser ? getRolePage(portalState.currentUser.role) : 'index.html';
 
-  if (currentPage === 'index.html') {
+  if (currentPage === 'index.html' || currentPage === 'login.html') {
     if (portalState.currentUser) window.location.replace(allowedPage);
     return;
   }

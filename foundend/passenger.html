@@ -11,7 +11,9 @@
       <nav class="page-nav" aria-label="Portal navigation">
         <a href="index.html">Home</a>
         <a href="passenger.html" class="active">Passenger</a>
-        <a href="driver.html">Driver</a>
+        <a href="taxi-driver.html">Taxi Driver</a>
+        <a href="driver.html">Bus Driver</a>
+        <a href="train-dashboard.html">Train Dashboard</a>
         <a href="admin.html">Admin</a>
       </nav>
 
@@ -35,27 +37,200 @@
           <div id="adminPanel" class="panel hidden"></div>
           <div id="driverPanel" class="panel hidden"></div>
           <div id="passengerPanel" class="panel hidden">
-            <div class="panel-heading">
-              <h3>Passenger travel board</h3>
-              <p>Search routes and choose a bus that fits your plan.</p>
+            <!-- Mode Switcher Tabs -->
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+              <button id="tabBusService" class="btn btn-primary" type="button" style="font-weight: 700;">
+                🚌 Bus Schedules & Routes
+              </button>
+              <button id="tabTaxiService" class="btn btn-secondary" type="button" style="font-weight: 700;">
+                🚖 Taxi Booking Dashboard
+              </button>
             </div>
-            <div class="filter-row">
-              <a class="btn btn-primary" href="https://forms.cloud.microsoft/r/6pLbJrGTSK" target="_blank" rel="noopener noreferrer">Share your feedback</a>
-              <a class="btn btn-primary" href="https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAANAAoq0L8RUNlQ1S1hOTkk3QVRUMloxVUdKU1JQWk5QQS4u" target="_blank" rel="noopener noreferrer">Submit a request</a>
-              <a class="btn btn-secondary" href="train-dashboard.html">Train dashboard</a>
+
+            <!-- Bus Service View -->
+            <div id="busServiceView">
+              <div class="panel-heading">
+                <h3>Passenger travel board</h3>
+                <p>Search routes and choose a bus that fits your plan.</p>
+              </div>
+              <div class="filter-row">
+                <a class="btn btn-primary" href="https://forms.cloud.microsoft/r/6pLbJrGTSK" target="_blank" rel="noopener noreferrer">Share your feedback</a>
+                <a class="btn btn-primary" href="https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAANAAoq0L8RUNlQ1S1hOTkk3QVRUMloxVUdKU1JQWk5QQS4u" target="_blank" rel="noopener noreferrer">Submit a request</a>
+                <a class="btn btn-secondary" href="train-dashboard.html">Train dashboard</a>
+              </div>
+              <div class="filter-row">
+                <input id="searchRoute" type="text" placeholder="Search route" />
+                <select id="statusFilter">
+                  <option value="All">All</option>
+                  <option value="On Time">On Time</option>
+                  <option value="Delayed">Delayed</option>
+                  <option value="Departed">Departed</option>
+                </select>
+                <button id="openPassengerTimetable" class="btn btn-secondary" type="button" data-action="open-timetable">Timetable</button>
+                <button id="openPassengerPriceTable" class="btn btn-secondary" type="button" data-action="open-price-table">Price Table</button>
+              </div>
+              <div id="passengerTrips"></div>
             </div>
-            <div class="filter-row">
-              <input id="searchRoute" type="text" placeholder="Search route" />
-              <select id="statusFilter">
-                <option value="All">All</option>
-                <option value="On Time">On Time</option>
-                <option value="Delayed">Delayed</option>
-                <option value="Departed">Departed</option>
-              </select>
-              <button id="openPassengerTimetable" class="btn btn-secondary" type="button" data-action="open-timetable">Timetable</button>
-              <button id="openPassengerPriceTable" class="btn btn-secondary" type="button" data-action="open-price-table">Price Table</button>
+
+            <!-- Taxi Booking View -->
+            <div id="taxiServiceView" class="hidden">
+              <div class="panel-heading" style="margin-bottom: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                  <div>
+                    <h3 style="margin: 0; font-size: 1.4rem; color: #0f172a;">🚖 On-Demand Taxi Booking Dashboard</h3>
+                    <p style="margin: 0.2rem 0 0; color: var(--muted); font-size: 0.95rem;">
+                      Book an available taxi directly or post a request with your budget to receive and accept driver quotes.
+                    </p>
+                  </div>
+                  <button class="btn btn-outline" id="passengerTaxiRefreshBtn" type="button" style="font-size: 0.9rem; padding: 0.5rem 1rem; font-weight: 600;">
+                    🔄 Refresh Feed
+                  </button>
+                </div>
+              </div>
+
+              <!-- Available Online Taxi Drivers -->
+              <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem; border-radius: 16px; border: 1.5px solid #bbf7d0; background: #f0fdf4;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                  <h4 style="margin: 0; color: #166534; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>🟢</span> Available Online Taxi Drivers
+                  </h4>
+                  <span id="onlineDriversCount" style="font-size: 0.85rem; font-weight: 700; color: #15803d; background: #dcfce7; padding: 0.2rem 0.6rem; border-radius: 999px;">
+                    Loading...
+                  </span>
+                </div>
+                <div id="passengerOnlineDriversList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.85rem;">
+                  <p style="color: #64748b; margin: 0; font-size: 0.9rem;">Checking active online taxi drivers...</p>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; align-items: start;">
+                <!-- Request & Booking Form Card -->
+                <div class="card" style="padding: 1.5rem; border-radius: 16px; border: 1.5px solid #cbd5e1; background: #ffffff; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h4 style="margin: 0; color: #1e293b; font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem;">
+                      <span>📍</span> Book a Taxi / Request Ride
+                    </h4>
+                    <span id="selectedDriverBadge" class="hidden" style="background: #e0f2fe; color: #0369a1; font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 999px;">
+                      Direct Booking
+                    </span>
+                  </div>
+
+                  <!-- Direct driver banner if selected -->
+                  <div id="directDriverNotice" class="hidden" style="margin-bottom: 1rem; padding: 0.75rem; background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 10px; font-size: 0.88rem; color: #0369a1; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      Booking directly with: <strong id="directDriverNameText">Driver</strong>
+                      <div id="directDriverDetailsText" style="font-size: 0.8rem; color: #0284c7;"></div>
+                    </div>
+                    <button type="button" id="clearDirectDriverBtn" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">✕ Change</button>
+                  </div>
+
+                  <form id="taxiRequestForm" novalidate>
+                    <input type="hidden" id="directDriverUsername" value="" />
+                    <input type="hidden" id="directDriverPhone" value="" />
+                    <input type="hidden" id="directDriverVehicleNumber" value="" />
+
+                    <div class="field-group" style="margin-bottom: 0.9rem;">
+                      <label for="taxiPickupLocation" style="font-weight: 600; color: #1e293b;">Pickup location *</label>
+                      <input
+                        id="taxiPickupLocation"
+                        name="pickup"
+                        type="text"
+                        placeholder="e.g. Pettah Station, Colombo / Panadura"
+                        required
+                        class="form-control"
+                      />
+                      <input id="taxiPickupLat" type="hidden" />
+                      <input id="taxiPickupLng" type="hidden" />
+                      <p id="taxiPickupMapStatus" style="margin: 0.4rem 0; color: #64748b; font-size: 0.82rem;">Choose the pickup point on the map, or enter an address above.</p>
+                      <div id="taxiPickupMap" role="application" aria-label="Choose taxi pickup location on map" style="height: 280px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;"></div>
+                    </div>
+
+                    <div class="field-group" style="margin-bottom: 0.9rem;">
+                      <label for="taxiDestination" style="font-weight: 600; color: #1e293b;">Drop-off destination *</label>
+                      <input
+                        id="taxiDestination"
+                        name="destination"
+                        type="text"
+                        placeholder="e.g. Katunayake Airport / Mount Lavinia / Hirana"
+                        required
+                        class="form-control"
+                      />
+                      <input id="taxiDestinationLat" type="hidden" />
+                      <input id="taxiDestinationLng" type="hidden" />
+                      <p id="taxiDestinationMapStatus" style="margin: 0.4rem 0; color: #64748b; font-size: 0.82rem;">Choose the drop-off point on the map, or enter an address above.</p>
+                      <div id="taxiDestinationMap" role="application" aria-label="Choose taxi drop-off location on map" style="height: 280px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;"></div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.9rem;">
+                      <div class="field-group">
+                        <label for="taxiVehiclePref" style="font-weight: 600; color: #1e293b;">Vehicle type</label>
+                        <select id="taxiVehiclePref" class="form-control">
+                          <option value="Any">Any vehicle</option>
+                          <option value="Car">Car / Sedan</option>
+                          <option value="Tuk Tuk">Tuk-Tuk</option>
+                          <option value="Van">Van</option>
+                          <option value="SUV">SUV</option>
+                        </select>
+                      </div>
+
+                      <div class="field-group">
+                        <label for="taxiBudget" style="font-weight: 600; color: #1e293b;">Your Budget / Fare (LKR)</label>
+                        <input
+                          id="taxiBudget"
+                          type="number"
+                          min="0"
+                          step="50"
+                          placeholder="e.g. 500"
+                          class="form-control"
+                        />
+                      </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.9rem;">
+                      <div class="field-group">
+                        <label for="taxiPhone" style="font-weight: 600; color: #1e293b;">Your phone # *</label>
+                        <input
+                          id="taxiPhone"
+                          type="tel"
+                          placeholder="+94 77..."
+                          required
+                          class="form-control"
+                        />
+                      </div>
+
+                      <div class="field-group">
+                        <label for="taxiNotes" style="font-weight: 600; color: #1e293b;">Notes for driver</label>
+                        <input
+                          id="taxiNotes"
+                          type="text"
+                          placeholder="e.g. 2 bags, waiting at gate"
+                          class="form-control"
+                        />
+                      </div>
+                    </div>
+
+                    <div id="taxiRequestMsg" style="margin-bottom: 0.85rem; font-weight: 600; font-size: 0.9rem;"></div>
+
+                    <button id="taxiSubmitBookingBtn" class="btn btn-primary btn-full" type="submit" style="background: #15803d; font-weight: 800; font-size: 1.05rem; padding: 0.9rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(21, 128, 61, 0.3);">
+                      🚖 Accept & Booking (Confirm Ride)
+                    </button>
+                  </form>
+                </div>
+
+                <!-- Active Requests & Driver Bids Container -->
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h4 style="margin: 0; font-size: 1.15rem; color: #1e293b;">
+                      My Ride Requests & Driver Quotes
+                    </h4>
+                  </div>
+
+                  <div id="passengerTaxiRequestsList">
+                    <p style="color: var(--muted);">Loading requests...</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div id="passengerTrips"></div>
           </div>
           <div id="passengerTimetableModal" class="modal hidden" aria-hidden="true">
             <div class="modal-overlay" data-action="close-timetable"></div>
@@ -121,5 +296,7 @@
     <script src="otp-utils.js"></script>
     <script src="app.js"></script>
     <script src="portal-auth.js"></script>
+    <script src="taxi-map.js"></script>
+    <script src="taxi-passenger.js"></script>
   </body>
 </html>

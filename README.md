@@ -18,7 +18,7 @@ npm install
 npm start
 ```
 
-For Netlify, configure `MONGODB_URI` in **Site configuration > Environment variables**. Do not upload `.env` or put MongoDB credentials in Flutter. Netlify automatically publishes `foundend` and deploys `netlify/functions/api.js` according to `netlify.toml`.
+For Netlify, configure `MONGODB_URI` and `GOOGLE_MAPS_API_KEY` in **Site configuration > Environment variables**. Enable the Google Maps JavaScript API and restrict the browser key to your site’s referrers. Do not upload `.env` or put MongoDB credentials in Flutter. Netlify automatically publishes `foundend` and deploys `netlify/functions/api.js` according to `netlify.toml`.
 
 The Flutter API URL is configured at the top of `flutter_app/lib/main.dart` through `API_BASE_URL`. For the deployed app, build with your Netlify site URL:
 
@@ -46,10 +46,11 @@ This project is a simple web-based bus timetable management site with three role
 
 ## Run locally
 
-Open index.html in a browser, or serve the folder with a simple static server:
+The login and other data features require the Express API. Do not open the HTML files directly with `file://` or serve them with a static-only server.
 
 ```bash
-python -m http.server 8000
+npm install
+npm start
 ```
 
-Then browse to http://localhost:8000.
+Set `MONGODB_URI` and `GOOGLE_MAPS_API_KEY` in `.env` before starting the server. Enable the Google Maps JavaScript API and restrict the browser key to your site’s referrers. Restart the server after changing `.env`. Then open http://localhost:8000/login.html in any browser. The frontend and API must use the same origin.

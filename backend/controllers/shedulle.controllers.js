@@ -146,7 +146,7 @@ export const requestStatusUpdate = async (req, res) => {
         const schedule = await shedulle.findByIdAndUpdate(
             req.params.id,
             { pending_status: status, pending_status_driver: driver_username },
-            { new: true }
+            { returnDocument: 'after' }
         ).lean();
         if (!schedule) return res.status(404).json({ message: 'Schedule not found.' });
         res.status(200).json({ message: 'Status sent for admin approval.', shedulle: schedule });

@@ -180,21 +180,50 @@
         background: #fff;
       }
 
-      .reg-role-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: #eff6ff;
-        border: 1.5px solid #bfdbfe;
-        border-radius: 10px;
-        padding: 0.65rem 1rem;
-        color: #1d4ed8;
-        font-weight: 600;
-        font-size: 0.9rem;
+      .reg-role-options {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
       }
 
-      .reg-role-badge .badge-icon {
-        font-size: 1.1rem;
+      .reg-role-card {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 0.75rem;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 0.35rem;
+        background: #f8fafc;
+        transition: all 0.2s ease;
+      }
+
+      .reg-role-card:hover {
+        border-color: #93c5fd;
+        background: #eff6ff;
+      }
+
+      .reg-role-card.active {
+        border-color: #2563eb;
+        background: #eff6ff;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+      }
+
+      .reg-role-card .role-icon {
+        font-size: 1.4rem;
+      }
+
+      .reg-role-card .role-title {
+        font-weight: 700;
+        font-size: 0.92rem;
+        color: #1e293b;
+      }
+
+      .reg-role-card .role-desc {
+        font-size: 0.74rem;
+        color: #64748b;
       }
 
       .reg-role-note {
@@ -202,6 +231,20 @@
         font-size: 0.82rem;
         margin: 0;
         line-height: 1.5;
+      }
+
+      .taxi-fields-wrap {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1rem;
+        background: #fefce8;
+        border: 1.5px solid #fef08a;
+        border-radius: 12px;
+        margin-top: 0.2rem;
+      }
+
+      .taxi-fields-wrap.hidden {
+        display: none;
       }
 
       .reg-submit-btn {
@@ -389,16 +432,46 @@
             <p class="reg-role-note">Used only to send your OTP. It is not saved to your account.</p>
           </div>
 
-          <!-- Role is always Passenger — hidden from user -->
-          <input type="hidden" name="newRole" value="Passenger" />
-
           <div class="reg-field">
-            <label>Account type</label>
-            <div class="reg-role-badge">
-              <span class="badge-icon">🎫</span>
-              Passenger account
+            <label>Select account type</label>
+            <div class="reg-role-options">
+              <div class="reg-role-card active" id="cardRolePassenger" data-role="Passenger">
+                <span class="role-icon">🎫</span>
+                <span class="role-title">Passenger</span>
+                <span class="role-desc">Search routes & book taxis</span>
+              </div>
+              <div class="reg-role-card" id="cardRoleTaxi" data-role="Taxi Driver">
+                <span class="role-icon">🚖</span>
+                <span class="role-title">Taxi Driver</span>
+                <span class="role-desc">Receive ride requests & give fares</span>
+              </div>
             </div>
-            <p class="reg-role-note">Driver accounts are created by the administrator only.</p>
+            <input type="hidden" name="newRole" id="newRoleInput" value="Passenger" />
+          </div>
+
+          <!-- Taxi Driver Vehicle Details (Shown when Taxi Driver selected) -->
+          <div id="taxiFieldsWrap" class="taxi-fields-wrap hidden">
+            <div class="reg-field">
+              <label for="regVehicleType">Vehicle type</label>
+              <select id="regVehicleType" name="vehicleType" class="form-control" style="width:100%; border:1.5px solid #dbe3ec; border-radius:12px; padding:0.75rem 1rem; background:#fff;">
+                <option value="Car">Car / Sedan</option>
+                <option value="Tuk Tuk">Tuk-Tuk / Three-Wheeler</option>
+                <option value="Van">Van</option>
+                <option value="SUV">SUV</option>
+                <option value="Motorbike">Motorbike</option>
+              </select>
+            </div>
+
+            <div class="reg-field">
+              <label for="regVehicleNumber">Vehicle plate number</label>
+              <input
+                id="regVehicleNumber"
+                name="vehicleNumber"
+                type="text"
+                placeholder="e.g. WP CAB-1234 or ABC-5678"
+                autocomplete="off"
+              />
+            </div>
           </div>
 
           <div id="regMessage" class="reg-message" role="status" aria-live="polite"></div>
@@ -416,8 +489,6 @@
 
     <script src="otp-utils.js"></script>
     <script src="app.js"></script>
-    <script src="otp-utils.js"></script>
-    <script src="app.js"></script>
     <script>
       (function () {
         function setMsg(text, type) {
@@ -425,6 +496,28 @@
           el.textContent = text;
           el.className = 'reg-message visible ' + type;
         }
+
+        const cardPassenger = document.getElementById('cardRolePassenger');
+        const cardTaxi = document.getElementById('cardRoleTaxi');
+        const newRoleInput = document.getElementById('newRoleInput');
+        const taxiFieldsWrap = document.getElementById('taxiFieldsWrap');
+        const regSubmitBtn = document.getElementById('regSubmitBtn');
+
+        cardPassenger.addEventListener('click', () => {
+          cardPassenger.classList.add('active');
+          cardTaxi.classList.remove('active');
+          newRoleInput.value = 'Passenger';
+          taxiFieldsWrap.classList.add('hidden');
+          regSubmitBtn.textContent = 'Create passenger account';
+        });
+
+        cardTaxi.addEventListener('click', () => {
+          cardTaxi.classList.add('active');
+          cardPassenger.classList.remove('active');
+          newRoleInput.value = 'Taxi Driver';
+          taxiFieldsWrap.classList.remove('hidden');
+          regSubmitBtn.textContent = 'Register as taxi driver';
+        });
 
         document.getElementById('regForm').addEventListener('submit', async function (e) {
           e.preventDefault();
@@ -434,9 +527,11 @@
           const password = String(data.get('newPassword') || '').trim();
           const telephone = String(data.get('telephone') || '').trim();
           const role = String(data.get('newRole') || 'Passenger');
+          const vehicleType = String(data.get('vehicleType') || 'Car').trim();
+          const vehicleNumber = String(data.get('vehicleNumber') || '').trim().toUpperCase();
 
           if (!displayName || !username || !password || !telephone) {
-            setMsg('Please fill in all fields.', 'error');
+            setMsg('Please fill in all required fields.', 'error');
             return;
           }
 
@@ -445,16 +540,25 @@
             return;
           }
 
-          const newUser = { name: displayName, username, password, role: 'passenger', telephone };
+          if (role === 'Taxi Driver' && !vehicleNumber) {
+            setMsg('Please provide your vehicle plate number.', 'error');
+            return;
+          }
+
+          const isTaxi = role === 'Taxi Driver';
+          const endpoint = isTaxi ? '/api/taxi/register' : '/api/passengers/register';
+          const payload = isTaxi
+            ? { name: displayName, username, password, telephone, vehicleType, vehicleNumber }
+            : { name: displayName, username, password, role: 'passenger', telephone };
 
           try {
-            const response = await fetch('/api/passengers/register', {
+            const response = await fetch(endpoint, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(newUser)
+              body: JSON.stringify(payload)
             });
          
-         const result = await response.json();
+            const result = await response.json();
 
             if (!response.ok) {
               setMsg(result.message || result.error || 'Registration failed.', 'error');
@@ -462,17 +566,20 @@
             }
 
             const otp = typeof otpUtils !== 'undefined' ? otpUtils.generateOtp(6) : String(Math.floor(100000 + Math.random() * 900000));
-            const pendingUser = { name: displayName, username, password, role: 'passenger' };
+            const pendingUser = isTaxi
+              ? { name: displayName, username, password, role: 'Taxi Driver', vehicleType, vehicleNumber, telephone }
+              : { name: displayName, username, password, role: 'passenger', telephone };
+
             sessionStorage.setItem('pendingOtp', otp);
             sessionStorage.setItem('pendingUser', JSON.stringify(pendingUser));
             sessionStorage.setItem('pendingTelephone', telephone);
             sessionStorage.setItem('pendingAction', 'register');
 
-            setMsg('Demo OTP prepared for your telephone number. Redirecting to verify...', 'success');
+            setMsg(`Demo OTP sent to ${telephone}. Redirecting to verify...`, 'success');
 
             setTimeout(() => {
               window.location.href = 'otp.html';
-            }, 900);
+            }, 800);
 
           } catch (err) {
             console.error('Error:', err);

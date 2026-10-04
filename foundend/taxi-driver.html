@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Taxi Driver Portal | Bus & Taxi Management</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="page-body">
+    <div class="page-shell">
+      <nav class="page-nav" aria-label="Portal navigation">
+        <a href="index.html">Home</a>
+        <a href="passenger.html">Passenger</a>
+        <a href="driver.html">Bus Driver</a>
+        <a href="taxi-driver.html" class="active">Taxi Driver</a>
+        <a href="train-dashboard.html">Train Dashboard</a>
+        <a href="admin.html">Admin</a>
+      </nav>
+
+      <main class="page-main" style="grid-template-columns: 1fr;">
+        <section class="dashboard-shell">
+          <!-- Header -->
+          <div class="dashboard-header">
+            <div>
+              <p class="eyebrow" style="color: var(--taxi-dark);">Taxi Fleet Network</p>
+              <h2 id="taxiDriverGreeting">Taxi Driver Workspace</h2>
+              <p id="taxiDriverVehicleInfo" style="color: var(--muted); margin: 0.25rem 0 0; font-size: 0.95rem; font-weight: 500;">
+                Loading vehicle info...
+              </p>
+            </div>
+            <div class="dashboard-actions">
+              <span id="taxiRoleBadge" class="role-badge taxi-role">🚖 Taxi Driver</span>
+              <button id="taxiLogoutBtn" class="btn btn-secondary" type="button">Logout</button>
+            </div>
+          </div>
+
+          <!-- Duty Switch Panel (ON / OFF) -->
+          <div id="dutySwitchPanel" class="taxi-duty-switch-panel">
+            <div class="taxi-duty-info">
+              <div class="taxi-pulse-indicator" id="pulseIndicator"></div>
+              <div>
+                <h3 id="dutyStatusHeading" style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #1e293b;">
+                  Off Duty (Offline)
+                </h3>
+                <p id="dutyStatusDesc" style="margin: 0.15rem 0 0; font-size: 0.88rem; color: #64748b;">
+                  Turn on the switch to start receiving passenger ride requests and send your budget quotes.
+                </p>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span id="switchLabel" style="font-weight: 700; font-size: 0.95rem; color: #475569;">OFF</span>
+              <label class="taxi-switch-toggle" for="dutyToggle">
+                <input type="checkbox" id="dutyToggle" aria-label="Toggle Online/Offline duty status" />
+                <span class="taxi-switch-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Navigation Sub-tabs -->
+          <div class="filter-row" style="margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button class="btn btn-primary" id="tabAvailableRequests" type="button">
+                📢 Available Requests (<span id="availableCount">0</span>)
+              </button>
+              <button class="btn btn-secondary" id="tabMyActiveTrips" type="button">
+                🚗 My Active Trips (<span id="activeCount">0</span>)
+              </button>
+              <button class="btn btn-secondary" id="tabCompletedHistory" type="button">
+                📋 Completed History
+              </button>
+            </div>
+
+            <div>
+              <button class="btn btn-outline" id="refreshBtn" type="button" title="Refresh available requests">
+                🔄 Refresh Feed
+              </button>
+            </div>
+          </div>
+
+          <!-- SECTION 1: Available Requests Feed -->
+          <div id="sectionAvailable" class="panel">
+            <div class="panel-heading" style="margin-bottom: 1rem;">
+              <h3 style="margin: 0;">Live Passenger Taxi Requests</h3>
+              <p style="margin: 0.2rem 0 0; color: var(--muted); font-size: 0.9rem;">
+                Review passenger destinations and submit your proposed budget. The passenger will review and accept or delete your quote.
+              </p>
+            </div>
+
+            <!-- Offline Notice -->
+            <div id="offlineNotice" class="taxi-empty-state">
+              <div class="taxi-empty-icon">🔌</div>
+              <h3 style="margin: 0 0 0.5rem; color: #334155;">You are currently Offline</h3>
+              <p style="margin: 0 0 1rem; color: #64748b; max-width: 480px; margin-inline: auto;">
+                Switch the toggle button above to <strong>ON</strong> to go online. Once active, you'll immediately see live ride requests from nearby passengers.
+              </p>
+              <button class="btn btn-primary" id="goOnlineBtn" type="button">Go Online Now</button>
+            </div>
+
+            <!-- Online Request Grid -->
+            <div id="requestsFeed" class="taxi-cards-grid hidden"></div>
+          </div>
+
+          <!-- SECTION 2: Active / Accepted Trips -->
+          <div id="sectionActive" class="panel hidden">
+            <div class="panel-heading" style="margin-bottom: 1rem;">
+              <h3 style="margin: 0;">My Active Rides & Trips</h3>
+              <p style="margin: 0.2rem 0 0; color: var(--muted); font-size: 0.9rem;">
+                Passengers who accepted your quote. Contact them and update ride progress.
+              </p>
+            </div>
+
+            <div id="activeTripsList" class="taxi-cards-grid"></div>
+          </div>
+
+          <!-- SECTION 3: Completed Trips History -->
+          <div id="sectionHistory" class="panel hidden">
+            <div class="panel-heading" style="margin-bottom: 1rem;">
+              <h3 style="margin: 0;">Completed Trips Log</h3>
+              <p style="margin: 0.2rem 0 0; color: var(--muted); font-size: 0.9rem;">
+                History of completed journeys and total earnings.
+              </p>
+            </div>
+
+            <div id="historyTripsList" class="taxi-cards-grid"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modal: Submit Budget Quote ("Give money taxi") -->
+    <div id="bidModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-overlay" id="closeBidOverlay"></div>
+      <section class="modal-content" style="max-width: 460px; padding: 1.5rem;" role="dialog" aria-modal="true" aria-labelledby="bidModalTitle">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div>
+            <p class="eyebrow" style="color: var(--taxi-dark);">Send Budget Quote</p>
+            <h3 id="bidModalTitle" style="margin: 0;">Offer Your Fare</h3>
+          </div>
+          <button id="closeBidBtn" class="timetable-close-btn" type="button" aria-label="Close dialog">×</button>
+        </div>
+
+        <div id="modalRideDetails" class="taxi-route-display" style="margin-bottom: 1rem;"></div>
+
+        <form id="bidForm">
+          <input type="hidden" id="modalRequestId" value="" />
+
+          <div class="field-group" style="margin-bottom: 1rem;">
+            <label for="bidBudgetAmount" style="font-weight: 700; color: #1e293b;">Your Fare Quote (LKR) *</label>
+            <input
+              id="bidBudgetAmount"
+              type="number"
+              min="50"
+              step="10"
+              placeholder="e.g. 750"
+              required
+              class="form-control"
+              style="font-size: 1.2rem; font-weight: 700; padding: 0.75rem;"
+            />
+            <p style="margin: 0.35rem 0 0; font-size: 0.8rem; color: #64748b;">
+              Passenger will see this amount and can choose to Accept or Delete it.
+            </p>
+          </div>
+
+          <div class="field-group" style="margin-bottom: 1.25rem;">
+            <label for="bidNote" style="font-weight: 600; color: #1e293b;">Estimated arrival time & Note</label>
+            <input
+              id="bidNote"
+              type="text"
+              placeholder="e.g. Arriving in 4 mins · AC Sedan"
+              class="form-control"
+            />
+          </div>
+
+          <div id="bidErrorMsg" class="form-error" style="margin-bottom: 0.75rem;"></div>
+
+          <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+            <button type="button" id="cancelBidBtn" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="submitBidBtn" style="background: var(--taxi-dark);">
+              Send Budget Quote
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <script src="otp-utils.js"></script>
+    <script src="portal-auth.js"></script>
+    <script>
+      (function() {
+        const TAXI_LOCAL_REQ_KEY = 'taxi-open-requests';
+        const TAXI_MY_TRIPS_KEY = 'taxi-my-trips';
+        let currentDriver = null;
+        let isOnline = false;
+        let pollingTimer = null;
+        let openRequests = [];    // Only status='Open' — visible to all drivers in feed
+        let myTripRequests = []; // Only trips where this driver was selected (Accepted/In Progress/Completed)
+
+        function getStoredUser() {
+          const portalState = JSON.parse(localStorage.getItem('bus-time-table-management-state') || '{}');
+          return portalState.currentUser;
+        }
+
+        function checkAuth() {
+          currentDriver = getStoredUser();
+          if (!currentDriver || (currentDriver.role !== 'Taxi Driver' && currentDriver.role !== 'taxi driver')) {
+            window.location.replace('index.html');
+            return false;
+          }
+
+          document.getElementById('taxiDriverGreeting').textContent = `Welcome, ${currentDriver.name || currentDriver.displayName || currentDriver.username}!`;
+          const vehType = currentDriver.vehicleType || 'Taxi';
+          const vehNum = currentDriver.vehicleNumber ? `[${currentDriver.vehicleNumber}]` : '';
+          document.getElementById('taxiDriverVehicleInfo').textContent = `Vehicle: ${vehType} ${vehNum} · Phone: ${currentDriver.telephone || 'Not provided'}`;
+
+          return true;
+        }
+
+        // Toggle Duty status
+        async function setDutyStatus(online) {
+          isOnline = online;
+          const dutyPanel = document.getElementById('dutySwitchPanel');
+          const toggle = document.getElementById('dutyToggle');
+          const heading = document.getElementById('dutyStatusHeading');
+          const desc = document.getElementById('dutyStatusDesc');
+          const label = document.getElementById('switchLabel');
+          const offlineNotice = document.getElementById('offlineNotice');
+          const requestsFeed = document.getElementById('requestsFeed');
+
+          toggle.checked = online;
+
+          if (online) {
+            dutyPanel.classList.add('is-online');
+            heading.textContent = '🟢 Online — Available for Hire';
+            heading.style.color = '#15803d';
+            desc.textContent = 'You are visible to passengers. Incoming ride requests will update automatically.';
+            label.textContent = 'ON';
+            label.style.color = '#16a34a';
+            offlineNotice.classList.add('hidden');
+            requestsFeed.classList.remove('hidden');
+          } else {
+            dutyPanel.classList.remove('is-online');
+            heading.textContent = '⚪ Off Duty (Offline)';
+            heading.style.color = '#1e293b';
+            desc.textContent = 'Turn on the switch to start receiving passenger ride requests and send your budget quotes.';
+            label.textContent = 'OFF';
+            label.style.color = '#64748b';
+            offlineNotice.classList.remove('hidden');
+            requestsFeed.classList.add('hidden');
+          }
+
+          // Persist status to backend
+          try {
+            await fetch('/api/taxi/status', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: currentDriver.username, isOnline: online })
+            });
+          } catch (e) {
+            console.warn('Could not sync status with server:', e);
+          }
+
+          if (online) {
+            fetchRequests();
+          }
+        }
+
+        // Fetch OPEN requests (status='Open' only — visible to all online drivers)
+        async function fetchOpenRequests() {
+          try {
+            const res = await fetch('/api/taxi/requests');
+            if (res.ok) {
+              const data = await res.json();
+              openRequests = data.requests || [];
+              localStorage.setItem(TAXI_LOCAL_REQ_KEY, JSON.stringify(openRequests));
+            } else {
+              try { openRequests = JSON.parse(localStorage.getItem(TAXI_LOCAL_REQ_KEY) || '[]'); } catch { openRequests = []; }
+            }
+          } catch (err) {
+            try { openRequests = JSON.parse(localStorage.getItem(TAXI_LOCAL_REQ_KEY) || '[]'); } catch { openRequests = []; }
+          }
+        }
+
+        // Fetch THIS DRIVER'S accepted/active/completed trips (only where they are selectedDriver)
+        async function fetchMyTrips() {
+          if (!currentDriver) return;
+          try {
+            const res = await fetch(`/api/taxi/requests?driverUsername=${encodeURIComponent(currentDriver.username)}`);
+            if (res.ok) {
+              const data = await res.json();
+              myTripRequests = data.requests || [];
+              localStorage.setItem(TAXI_MY_TRIPS_KEY, JSON.stringify(myTripRequests));
+            } else {
+              try { myTripRequests = JSON.parse(localStorage.getItem(TAXI_MY_TRIPS_KEY) || '[]'); } catch { myTripRequests = []; }
+            }
+          } catch (err) {
+            try { myTripRequests = JSON.parse(localStorage.getItem(TAXI_MY_TRIPS_KEY) || '[]'); } catch { myTripRequests = []; }
+          }
+        }
+
+        // Fetch both feeds simultaneously then re-render
+        async function fetchRequests() {
+          await Promise.all([fetchOpenRequests(), fetchMyTrips()]);
+          renderAll();
+        }
+
+        function renderAll() {
+          renderAvailableFeed();
+          renderActiveTrips();
+          renderCompletedTrips();
+        }
+
+
+        // Render Open requests that this driver can bid on
+        function renderAvailableFeed() {
+          const feed = document.getElementById('requestsFeed');
+          const availableCountEl = document.getElementById('availableCount');
+          if (!feed) return;
+
+          // Only show truly Open requests (status='Open') — accepted ones are invisible here
+          availableCountEl.textContent = openRequests.length;
+
+          if (!isOnline) {
+            return;
+          }
+
+          if (openRequests.length === 0) {
+            feed.innerHTML = `
+              <div class="taxi-empty-state" style="grid-column: 1 / -1;">
+                <div class="taxi-empty-icon">🚖</div>
+                <h3 style="margin: 0 0 0.5rem; color: #334155;">No pending requests right now</h3>
+                <p style="margin: 0; color: #64748b;">
+                  Passengers in your area haven't posted any new rides yet. Keep your switch ON to be alerted when one appears!
+                </p>
+              </div>
+            `;
+            return;
+          }
+
+          feed.innerHTML = openRequests.map(req => {
+            const myBid = (req.bids || []).find(b => b.driverUsername.toLowerCase() === currentDriver.username.toLowerCase());
+            const otherBidsCount = (req.bids || []).length;
+            const timeStr = new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            return `
+              <div class="taxi-request-card" data-req-id="${req._id || req.id}">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--taxi-dark); background: var(--taxi-bg); padding: 0.25rem 0.6rem; border-radius: 999px;">
+                      ${req.vehiclePreference || 'Any Vehicle'}
+                    </span>
+                    <span style="font-size: 0.8rem; color: var(--muted);">🕒 ${timeStr}</span>
+                  </div>
+
+                  <div class="taxi-route-display">
+                    <div class="taxi-stop-item">
+                      <span class="taxi-stop-dot pickup"></span>
+                      <span>From: <strong>${escapeHtml(req.pickupLocation)}</strong></span>
+                    </div>
+                    ${getTripMapLink(req)}
+                    <div class="taxi-stop-item">
+                      <span class="taxi-stop-dot dest"></span>
+                      <span>To: <strong>${escapeHtml(req.destination)}</strong></span>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 0.75rem; font-size: 0.88rem; color: #475569;">
+                    <p style="margin: 0 0 0.25rem;"><strong>Passenger:</strong> ${escapeHtml(req.passengerName || req.passengerUsername)}</p>
+                    ${req.passengerPhone ? `<p style="margin: 0 0 0.25rem;"><strong>Contact:</strong> 📞 <a href="tel:${req.passengerPhone}">${req.passengerPhone}</a></p>` : ''}
+                    ${req.passengerNotes ? `<p style="margin: 0 0 0.25rem; font-style: italic; color: #64748b;">" ${escapeHtml(req.passengerNotes)} "</p>` : ''}
+                  </div>
+                </div>
+
+                <div style="border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
+                  ${myBid ? `
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 0.65rem 0.85rem; margin-bottom: 0.5rem;">
+                      <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.85rem; color: #166534; font-weight: 600;">Your Quote Sent:</span>
+                        <span style="font-size: 1.15rem; font-weight: 800; color: #15803d;">LKR ${myBid.budget}</span>
+                      </div>
+                      ${myBid.note ? `<p style="margin: 0.2rem 0 0; font-size: 0.8rem; color: #166534;">ETA: ${escapeHtml(myBid.note)}</p>` : ''}
+                      <p style="margin: 0.35rem 0 0; font-size: 0.76rem; color: #15803d; font-weight: 500;">⏳ Waiting for passenger decision (Accept or Delete)</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                      <button class="btn btn-outline btn-full btn-edit-bid" data-id="${req._id || req.id}" style="font-size: 0.85rem;">Update Quote</button>
+                      <button class="btn btn-secondary btn-full btn-cancel-bid" data-id="${req._id || req.id}" style="font-size: 0.85rem; color: var(--danger);">Withdraw</button>
+                    </div>
+                  ` : `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                      <span style="font-size: 0.82rem; color: #64748b;">Offers from other drivers: <strong>${otherBidsCount}</strong></span>
+                    </div>
+                    <button class="btn btn-primary btn-full btn-open-bid" data-id="${req._id || req.id}" style="background: var(--taxi-dark); font-weight: 700;">
+                      💰 Send Budget / Price Quote
+                    </button>
+                  `}
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // Render Active/Accepted Trips for this driver ONLY (trips they were selected for)
+        function renderActiveTrips() {
+          const list = document.getElementById('activeTripsList');
+          const activeCountEl = document.getElementById('activeCount');
+          if (!list) return;
+
+          // Use myTripRequests — already filtered server-side to this driver's accepted/in-progress trips
+          const myActive = myTripRequests.filter(r =>
+            r.status === 'Accepted' || r.status === 'In Progress'
+          );
+
+          activeCountEl.textContent = myActive.length;
+
+          if (myActive.length === 0) {
+            list.innerHTML = `
+              <div class="taxi-empty-state" style="grid-column: 1 / -1;">
+                <div class="taxi-empty-icon">🚗</div>
+                <h3 style="margin: 0 0 0.5rem; color: #334155;">No active trips right now</h3>
+                <p style="margin: 0; color: #64748b;">
+                  When a passenger accepts your budget quote, their ride will immediately show up here.
+                </p>
+              </div>
+            `;
+            return;
+          }
+
+          list.innerHTML = myActive.map(req => {
+            const fare = req.selectedDriver?.agreedBudget || 0;
+            const isInProgress = req.status === 'In Progress';
+
+            return `
+              <div class="taxi-request-card" style="border: 2px solid #22c55e;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="background: #dcfce7; color: #15803d; font-weight: 700; font-size: 0.8rem; padding: 0.25rem 0.65rem; border-radius: 999px;">
+                      ${isInProgress ? '⚡ TRIP IN PROGRESS' : '✅ OFFER ACCEPTED'}
+                    </span>
+                    <span class="bid-price-tag">LKR ${fare}</span>
+                  </div>
+
+                  <div class="taxi-route-display">
+                    <div class="taxi-stop-item">
+                      <span class="taxi-stop-dot pickup"></span>
+                      <span>Pickup: <strong>${escapeHtml(req.pickupLocation)}</strong></span>
+                    </div>
+                    ${getTripMapLink(req)}
+                    <div class="taxi-stop-item">
+                      <span class="taxi-stop-dot dest"></span>
+                      <span>Drop-off: <strong>${escapeHtml(req.destination)}</strong></span>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 0.85rem; padding: 0.75rem; background: #f8fafc; border-radius: 10px;">
+                    <p style="margin: 0 0 0.25rem; font-weight: 700;">Passenger: ${escapeHtml(req.passengerName)}</p>
+                    <p style="margin: 0;">Phone: 📞 <a href="tel:${req.passengerPhone}" style="color: #2563eb; font-weight: 700; font-size: 1rem;">${req.passengerPhone || 'Not given'}</a></p>
+                    ${req.passengerNotes ? `<p style="margin: 0.35rem 0 0; font-size: 0.85rem; color: #64748b;">Note: ${escapeHtml(req.passengerNotes)}</p>` : ''}
+                  </div>
+                </div>
+
+                <div style="display: flex; gap: 0.6rem; margin-top: 0.5rem;">
+                  ${!isInProgress ? `
+                    <button class="btn btn-primary btn-full btn-start-trip" data-id="${req._id || req.id}" style="background: #2563eb;">
+                      Start Trip
+                    </button>
+                  ` : ''}
+                  <button class="btn btn-primary btn-full btn-complete-trip" data-id="${req._id || req.id}" style="background: #16a34a;">
+                    Complete Trip & Collect LKR ${fare}
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        // Render Completed Trips History
+        function renderCompletedTrips() {
+          const list = document.getElementById('historyTripsList');
+          if (!list) return;
+
+          // myTripRequests is already filtered server-side to this driver's trips only
+          const myCompleted = myTripRequests.filter(r => r.status === 'Completed');
+
+          if (myCompleted.length === 0) {
+            list.innerHTML = `
+              <div class="taxi-empty-state" style="grid-column: 1 / -1;">
+                <div class="taxi-empty-icon">📋</div>
+                <h3 style="margin: 0 0 0.5rem; color: #334155;">No completed trips yet</h3>
+                <p style="margin: 0; color: #64748b;">Finished trips and collected earnings will appear here.</p>
+              </div>
+            `;
+            return;
+          }
+
+          const totalEarnings = myCompleted.reduce((sum, r) => sum + (r.selectedDriver?.agreedBudget || 0), 0);
+
+          list.innerHTML = `
+            <div style="grid-column: 1 / -1; background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 14px; padding: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h4 style="margin: 0; color: #065f46;">Total Earnings from Taxi Rides</h4>
+                <p style="margin: 0.2rem 0 0; color: #047857; font-size: 0.9rem;">Total completed: ${myCompleted.length} trips</p>
+              </div>
+              <div style="font-size: 1.8rem; font-weight: 800; color: #047857;">
+                LKR ${totalEarnings.toLocaleString()}
+              </div>
+            </div>
+            ${myCompleted.map(req => `
+              <div class="taxi-request-card">
+                <div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="color: #15803d; font-weight: 700; font-size: 0.8rem; background: #dcfce7; padding: 0.25rem 0.6rem; border-radius: 999px;">
+                      COMPLETED
+                    </span>
+                    <span class="bid-price-tag" style="font-size: 1.15rem;">LKR ${req.selectedDriver?.agreedBudget || 0}</span>
+                  </div>
+                  <div class="taxi-route-display">
+                    <div class="taxi-stop-item"><span class="taxi-stop-dot pickup"></span><span>${escapeHtml(req.pickupLocation)}</span></div>
+                    <div class="taxi-stop-item"><span class="taxi-stop-dot dest"></span><span>${escapeHtml(req.destination)}</span></div>
+                  </div>
+                  <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: #64748b;">
+                    Passenger: <strong>${escapeHtml(req.passengerName)}</strong>
+                  </p>
+                </div>
+              </div>
+            `).join('')}
+          `;
+        }
+
+        // Open Quote Modal
+        function openBidModal(reqId) {
+          // Search both arrays since the request could be in either
+          const req = openRequests.find(r => (r._id || r.id) === reqId)
+                   || myTripRequests.find(r => (r._id || r.id) === reqId);
+          if (!req) return;
+
+          document.getElementById('modalRequestId').value = reqId;
+          document.getElementById('modalRideDetails').innerHTML = `
+            <div class="taxi-stop-item"><span class="taxi-stop-dot pickup"></span><span>Pickup: <strong>${escapeHtml(req.pickupLocation)}</strong></span></div>
+            <div class="taxi-stop-item"><span class="taxi-stop-dot dest"></span><span>Drop-off: <strong>${escapeHtml(req.destination)}</strong></span></div>
+            <div style="margin-top: 0.35rem; font-size: 0.82rem; color: #64748b;">
+              Passenger: <strong>${escapeHtml(req.passengerName)}</strong> (${req.vehiclePreference || 'Any vehicle'})
+            </div>
+          `;
+
+          const existingBid = (req.bids || []).find(b => b.driverUsername.toLowerCase() === currentDriver.username.toLowerCase());
+          document.getElementById('bidBudgetAmount').value = existingBid ? existingBid.budget : '';
+          document.getElementById('bidNote').value = existingBid ? existingBid.note : '';
+          document.getElementById('bidErrorMsg').textContent = '';
+
+          const modal = document.getElementById('bidModal');
+          modal.classList.remove('hidden');
+          modal.setAttribute('aria-hidden', 'false');
+          document.getElementById('bidBudgetAmount').focus();
+        }
+
+        function closeBidModal() {
+          const modal = document.getElementById('bidModal');
+          modal.classList.add('hidden');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+
+        // Submit Bid handler
+        async function handleBidSubmit(e) {
+          e.preventDefault();
+          const reqId = document.getElementById('modalRequestId').value;
+          const budget = Number(document.getElementById('bidBudgetAmount').value);
+          const note = String(document.getElementById('bidNote').value || '').trim();
+          const errEl = document.getElementById('bidErrorMsg');
+
+          if (!budget || budget <= 0) {
+            errEl.textContent = 'Please enter a valid price/budget quote.';
+            return;
+          }
+
+          const bidPayload = {
+            driverUsername: currentDriver.username,
+            driverName: currentDriver.name || currentDriver.displayName || currentDriver.username,
+            driverPhone: currentDriver.telephone || '',
+            vehicleType: currentDriver.vehicleType || 'Car',
+            vehicleNumber: currentDriver.vehicleNumber || '',
+            budget,
+            note
+          };
+
+          try {
+            const res = await fetch(`/api/taxi/requests/${encodeURIComponent(reqId)}/bid`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(bidPayload)
+            });
+
+            if (!res.ok) {
+              const resData = await res.json();
+              throw new Error(resData.message || 'Failed to submit quote.');
+            }
+
+            closeBidModal();
+            await fetchRequests();
+          } catch (err) {
+            errEl.textContent = err.message || 'Could not connect to server.';
+          }
+        }
+
+        // Withdraw bid
+        async function handleWithdrawBid(reqId) {
+          if (!confirm('Withdraw your price quote for this ride?')) return;
+          try {
+            const res = await fetch(`/api/taxi/requests/${encodeURIComponent(reqId)}/bid/${encodeURIComponent(currentDriver.username)}`, {
+              method: 'DELETE'
+            });
+            if (!res.ok) throw new Error('Could not withdraw quote.');
+            await fetchRequests();
+          } catch (e) {
+            alert(e.message || 'Error withdrawing quote.');
+          }
+        }
+
+        // Trip status change
+        async function updateTripStatus(reqId, status) {
+          try {
+            const res = await fetch(`/api/taxi/requests/${encodeURIComponent(reqId)}/status`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status })
+            });
+            if (!res.ok) throw new Error('Failed to update trip status.');
+            await fetchRequests();
+          } catch (e) {
+            alert(e.message || 'Error updating status.');
+          }
+        }
+
+        function escapeHtml(str) {
+          if (!str) return '';
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+        }
+
+        function getTripMapLink(request) {
+          const getCoordinates = (coordinates) => {
+            const lat = Number(coordinates?.lat);
+            const lng = Number(coordinates?.lng);
+            return Number.isFinite(lat) && lat >= -90 && lat <= 90
+              && Number.isFinite(lng) && lng >= -180 && lng <= 180
+              ? `${lat},${lng}`
+              : '';
+          };
+          const origin = getCoordinates(request.pickupCoordinates) || String(request.pickupLocation || '').trim();
+          const destination = getCoordinates(request.destinationCoordinates) || String(request.destination || '').trim();
+          if (!origin || !destination) return '';
+
+          const mapUrl = new URL('https://www.google.com/maps/dir/');
+          mapUrl.searchParams.set('api', '1');
+          mapUrl.searchParams.set('origin', origin);
+          mapUrl.searchParams.set('destination', destination);
+          mapUrl.searchParams.set('travelmode', 'driving');
+          return `<div class="taxi-stop-item"><span aria-hidden="true">🗺️</span><a href="${escapeHtml(mapUrl.toString())}" target="_blank" rel="noopener noreferrer">View route on map</a></div>`;
+        }
+
+        // Tab Switching
+        function setupTabs() {
+          const tabAvail = document.getElementById('tabAvailableRequests');
+          const tabActive = document.getElementById('tabMyActiveTrips');
+          const tabHist = document.getElementById('tabCompletedHistory');
+
+          const secAvail = document.getElementById('sectionAvailable');
+          const secActive = document.getElementById('sectionActive');
+          const secHist = document.getElementById('sectionHistory');
+
+          tabAvail.addEventListener('click', () => {
+            tabAvail.className = 'btn btn-primary';
+            tabActive.className = 'btn btn-secondary';
+            tabHist.className = 'btn btn-secondary';
+            secAvail.classList.remove('hidden');
+            secActive.classList.add('hidden');
+            secHist.classList.add('hidden');
+          });
+
+          tabActive.addEventListener('click', () => {
+            tabActive.className = 'btn btn-primary';
+            tabAvail.className = 'btn btn-secondary';
+            tabHist.className = 'btn btn-secondary';
+            secActive.classList.remove('hidden');
+            secAvail.classList.add('hidden');
+            secHist.classList.add('hidden');
+          });
+
+          tabHist.addEventListener('click', () => {
+            tabHist.className = 'btn btn-primary';
+            tabAvail.className = 'btn btn-secondary';
+            tabActive.className = 'btn btn-secondary';
+            secHist.classList.remove('hidden');
+            secAvail.classList.add('hidden');
+            secActive.classList.add('hidden');
+          });
+        }
+
+        // Event Listeners
+        function setupEvents() {
+          document.getElementById('dutyToggle').addEventListener('change', (e) => {
+            setDutyStatus(e.target.checked);
+          });
+
+          document.getElementById('goOnlineBtn').addEventListener('click', () => {
+            setDutyStatus(true);
+          });
+
+          document.getElementById('refreshBtn').addEventListener('click', () => {
+            fetchRequests();
+          });
+
+          document.getElementById('bidForm').addEventListener('submit', handleBidSubmit);
+          document.getElementById('closeBidBtn').addEventListener('click', closeBidModal);
+          document.getElementById('closeBidOverlay').addEventListener('click', closeBidModal);
+          document.getElementById('cancelBidBtn').addEventListener('click', closeBidModal);
+
+          document.getElementById('taxiLogoutBtn').addEventListener('click', () => {
+            const portalState = JSON.parse(localStorage.getItem('bus-time-table-management-state') || '{}');
+            portalState.currentUser = null;
+            localStorage.setItem('bus-time-table-management-state', JSON.stringify(portalState));
+            window.location.replace('index.html');
+          });
+
+          // Delegated clicks on feed and active lists
+          document.addEventListener('click', (e) => {
+            const openBidBtn = e.target.closest('.btn-open-bid') || e.target.closest('.btn-edit-bid');
+            if (openBidBtn) {
+              const reqId = openBidBtn.getAttribute('data-id');
+              openBidModal(reqId);
+              return;
+            }
+
+            const cancelBidBtn = e.target.closest('.btn-cancel-bid');
+            if (cancelBidBtn) {
+              const reqId = cancelBidBtn.getAttribute('data-id');
+              handleWithdrawBid(reqId);
+              return;
+            }
+
+            const startTripBtn = e.target.closest('.btn-start-trip');
+            if (startTripBtn) {
+              const reqId = startTripBtn.getAttribute('data-id');
+              updateTripStatus(reqId, 'In Progress');
+              return;
+            }
+
+            const completeTripBtn = e.target.closest('.btn-complete-trip');
+            if (completeTripBtn) {
+              const reqId = completeTripBtn.getAttribute('data-id');
+              if (confirm('Mark this trip as completed and confirm fare collection?')) {
+                updateTripStatus(reqId, 'Completed');
+              }
+              return;
+            }
+          });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+          if (!checkAuth()) return;
+          setupTabs();
+          setupEvents();
+          // Initially offline until driver toggles ON
+          setDutyStatus(false);
+          // Start auto-poll every 5 seconds
+          pollingTimer = setInterval(async () => {
+            // Always refresh my trips (needed even offline to update Active Trips tab)
+            await fetchMyTrips();
+            // Only refresh the open feed when online (saves bandwidth)
+            if (isOnline) {
+              await fetchOpenRequests();
+            }
+            renderAll();
+          }, 5000);
+        });
+      })();
+    </script>
+  </body>
+</html>
